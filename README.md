@@ -16,7 +16,7 @@ Lis ce guide et suis-le étape par étape avec moi : https://raw.githubuserconte
 
 Claude te pose ensuite 12 questions, une par une. Ça prend environ 10 minutes.
 
-Si Claude répond qu'il n'arrive pas à ouvrir le lien : ouvre ce lien toi-même, copie tout le texte de la page, colle-le dans la conversation et envoie.
+Si Claude répond qu'il n'arrive pas à ouvrir le lien : ouvre [le guide](https://raw.githubusercontent.com/Asante0302/revision-app/main/ONBOARDING.md) toi-même, copie tout le texte de la page, colle-le dans la conversation et envoie.
 
 ## Ce que tu obtiens
 
