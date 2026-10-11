@@ -62,11 +62,11 @@ Tous agissent sur le compte du jeton, et seulement sur lui. Noms et descriptions
 
 | Outil | Entrée | Effet |
 |---|---|---|
-| `demarrer` | aucune | Crée `Révision/` et les 9 fichiers depuis les gabarits s'ils manquent. Rend la liste des fichiers avec leur `version`, le contenu d'AGENTS.md, `accueil_fait` (vrai si Pers.md ne contient plus de `{`), et l'adresse du site. |
+| `demarrer` | aucune | Crée `Révision/` et les 9 fichiers depuis les gabarits s'ils manquent. Rend la liste des fichiers avec leur `version`, le contenu d'AGENTS.md, `accueil_fait` (vrai si Pers.md n'est plus égal à son modèle), et l'adresse du site. |
 | `lire_fichier` | `nom` (un des 9) | `{contenu, version}` |
 | `ecrire_fichier` | `nom`, `contenu`, `version` | Refuse si `version` ne correspond plus (« modifié ailleurs, relis le fichier »). Rend la nouvelle `version`. Taille max 100 Ko. |
 | `lister_a_trier` | aucune | Fichiers du dossier À trier : `id`, nom, type, date. |
-| `lire_a_trier` | `id` | Image : contenu image MCP (redimensionnée au besoin, 1600 px max). Texte : le texte. PDF : contenu ressource `application/pdf` (support côté client à vérifier). |
+| `lire_a_trier` | `id` | Image : contenu image MCP (5 Mo max ; le site réduit les photos à 1600 px avant l'envoi, HEIC refusé). Texte : le texte. PDF : contenu ressource `application/pdf` (support côté client à vérifier). |
 | `enregistrer_lecon` | `matiere`, `chapitre`, `titre`, `pack`, `source_id` facultatif | Valide le pack, écrit `Cours/…/<Titre>.json`, met le cache à jour, déplace la source si `source_id`. Rend l'`id` de leçon et le lien du site. |
 | `lister_lecons` | aucune | Leçons du cache (id, matière, chapitre, titre, date). |
 | `lire_lecon` | `id` | Le pack complet. |

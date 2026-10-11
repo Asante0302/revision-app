@@ -33,7 +33,7 @@ Version de test, 10 places au plus. Si Google affiche un avertissement « applic
 ## Tes données
 
 - Tes cours et tes fiches sont rangés dans **ton** Google Drive, dossier « Révision ». Le service ne voit que les fichiers qu'il a créés lui-même, rien d'autre de ton Drive.
-- Le serveur garde ton adresse e-mail et ton nom Google, ta progression (cartes, quiz) et une copie des leçons pour afficher le site. Tu peux tout effacer depuis la page « Compte » du site.
+- Le serveur garde ton adresse e-mail et ton nom Google, ta progression (cartes, quiz), une copie des leçons et de ton calendrier de contrôles pour afficher le site. Tu peux tout effacer depuis la page « Compte » du site.
 - Ce que tu écris à Claude est envoyé à Claude (Anthropic), comme toute conversation.
 - Ne donne ni ton nom de famille ni le nom de ton école.
 

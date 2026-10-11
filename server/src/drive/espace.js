@@ -24,6 +24,8 @@ export function creerEspace({ drive, templates }) {
     return (await drive.creerDossier(nom, parentId)).id;
   }
   const racine = (creer = true) => dossier(NOM_RACINE, 'root', creer);
+  // Un fichier encore égal à son modèle n'a pas été rempli (une accolade écrite par l'élève ne compte pas).
+  const estModele = (nom, texte) => texte.trim() === String(templates[nom]).trim();
   async function aTrier(creer = true) {
     const r = await racine(creer);
     return r ? dossier(NOM_A_TRIER, r, creer) : null;
@@ -47,7 +49,7 @@ export function creerEspace({ drive, templates }) {
       const fichiers = FICHIERS.map((nom) => ({ nom, version: String(presents.get(nom).version) }));
       const agents = (await drive.telecharger(presents.get('AGENTS.md').id)).toString('utf8');
       const pers = (await drive.telecharger(presents.get('Pers.md').id)).toString('utf8');
-      return { fichiers, agents, accueil_fait: !pers.includes('{') };
+      return { fichiers, agents, accueil_fait: !estModele('Pers.md', pers) };
     },
 
     async lireFichier(nom) {
@@ -65,8 +67,8 @@ export function creerEspace({ drive, templates }) {
         throw new ErreurMetier(`« ${nom} » a été modifié ailleurs depuis ta lecture. Relis le fichier avec lire_fichier, puis refais ta modification.`, 409);
       }
       if (nom === 'AGENTS.md') {
-        const pers = await fichierRacine('Pers.md');
-        if (pers && !(await drive.telecharger(pers.id)).toString('utf8').includes('{')) {
+        // Écrit une seule fois pendant l'accueil, puis verrouillé (un cours piégé ne peut pas changer les consignes).
+        if (!estModele('AGENTS.md', (await drive.telecharger(f.id)).toString('utf8'))) {
           throw new ErreurMetier('AGENTS.md est verrouillé après l\'accueil ; l\'élève peut le modifier lui-même dans son Drive.', 403);
         }
       }

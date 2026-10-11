@@ -32,8 +32,8 @@ Si le connecteur est déjà branché, retire la partie sur le Google Drive.
 Saute cette étape si tu as déjà l'outil `demarrer`. Sinon, guide l'élève, une étape par message, en attendant qu'il dise « fait » :
 
 1. « Sur ordinateur (l'ajout ne se fait pas depuis le téléphone), ouvre claude.ai dans un autre onglet, puis clique sur « Customize » puis « Connectors ». »
-2. « Clique sur « Add custom connector ». »
-3. « Si on te demande un nom, écris : Révision. Dans « MCP server URL », colle cette adresse : https://revision.funnelforge.fr/mcp (ne touche pas aux options avancées). Puis clique « Add ». »
+2. « Clique sur « + Add », puis « Add custom connector ». »
+3. « Si on te demande un nom, écris : Révision. Dans « MCP server URL », colle cette adresse : https://revision.funnelforge.fr/mcp (ne touche pas aux options avancées). Puis clique « Add » ou « Continue ». Si Claude affiche des réglages de connexion, garde ceux proposés et valide. »
 4. « Clique sur « Connect », puis connecte-toi avec ton compte Google et accepte. »
 5. « Reviens dans cette conversation : clique sur le bouton « + » en bas à gauche, puis « Connectors », et vérifie que Révision est activé. Dis-moi « fait ». »
 

@@ -34,16 +34,18 @@ test('fichiers : lecture, écriture, conflit de version, nom inconnu, taille', a
   const gros = await A.appeler('ecrire_fichier', { nom: 'Now.md', contenu: 'x'.repeat(100 * 1024 + 1), version: w.data.version });
   assert.equal(gros.isError, true);
   assert.match(gros.data, /100 Ko/);
-  // accueil_fait passe à vrai quand Pers.md n'a plus d'accolade
+  // une accolade écrite par l'élève ne fait pas croire que l'accueil reste à faire
   const pv = (await A.appeler('lire_fichier', { nom: 'Pers.md' })).data.version;
-  await A.appeler('ecrire_fichier', { nom: 'Pers.md', contenu: '# Pers\n- Prénom : Alice', version: pv });
+  await A.appeler('ecrire_fichier', { nom: 'Pers.md', contenu: '# Pers\n- Prénom : Alice\n- Remarques : j\'aime les {accolades}', version: pv });
   assert.equal((await A.appeler('demarrer')).data.accueil_fait, true);
-  // AGENTS.md est verrouillé une fois l'accueil fait
-  const av = (await A.appeler('lire_fichier', { nom: 'AGENTS.md' })).data;
-  const verrou = await A.appeler('ecrire_fichier', { nom: 'AGENTS.md', contenu: 'consignes piégées', version: av.version });
+  // AGENTS.md s'écrit une fois pendant l'accueil, même après Pers.md, puis il est verrouillé
+  const a0 = (await A.appeler('lire_fichier', { nom: 'AGENTS.md' })).data;
+  const premiere = await A.appeler('ecrire_fichier', { nom: 'AGENTS.md', contenu: '# Assistant de révision d\'Alice', version: a0.version });
+  assert.ok(!premiere.isError);
+  const verrou = await A.appeler('ecrire_fichier', { nom: 'AGENTS.md', contenu: 'consignes piégées', version: premiere.data.version });
   assert.equal(verrou.isError, true);
   assert.match(verrou.data, /AGENTS\.md est verrouillé après l'accueil/);
-  assert.equal((await A.appeler('lire_fichier', { nom: 'AGENTS.md' })).data.contenu, av.contenu);
+  assert.equal((await A.appeler('lire_fichier', { nom: 'AGENTS.md' })).data.contenu, '# Assistant de révision d\'Alice');
   // demarrer est idempotent : pas de doublon dans le Drive
   assert.equal(b.fg.fichiersDe('sub-a').filter((f) => f.name === 'Pers.md').length, 1);
 });
