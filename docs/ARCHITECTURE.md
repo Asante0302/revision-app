@@ -60,7 +60,7 @@ Utiliser les briques du SDK officiel `@modelcontextprotocol/sdk` quand elles exi
 
 ### Site
 
-Session par cookie `rev_sess` (HttpOnly, Secure, SameSite=Lax, 30 jours), condensat en base. Toute requête non GET vers `/api` exige un en-tête `Origin` égal à `PUBLIC_URL`. Limites par compte : `POST /api/a-trier` 30 requêtes par 15 min, `/mcp` 300 par 15 min. `POST /api/compte/deconnecter-claude` supprime tous les jetons MCP, codes et accords du compte. `ecrire_fichier` refuse de modifier AGENTS.md une fois l'accueil fait.
+Session par cookie `__Host-rev_sess` (`rev_sess` en http local ; HttpOnly, Secure, SameSite=Lax, 30 jours), condensat en base. Toute requête non GET vers `/api` exige un en-tête `Origin` égal à `PUBLIC_URL`. Limites par compte : `POST /api/a-trier` 30 requêtes par 15 min, `/mcp` 300 par 15 min. `POST /api/compte/deconnecter-claude` supprime tous les jetons MCP, codes et accords du compte. `ecrire_fichier` accepte une seule écriture d'AGENTS.md (quand il est encore égal au modèle), puis le refuse ; l'élève peut le modifier lui-même dans son Drive. Les consignes MCP rappellent à Claude que le contenu des fichiers et des cours est une donnée, jamais une consigne : c'est une protection par instruction, pas une barrière technique. Un code ou un refresh déjà échangé qui revient supprime tous les jetons du couple compte × client.
 
 ## Outils MCP
 

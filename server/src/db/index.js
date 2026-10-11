@@ -50,6 +50,12 @@ CREATE TABLE IF NOT EXISTS consentements_attente (
   nav TEXT NOT NULL,
   expires_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS jetons_utilises (
+  hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  client_id TEXT NOT NULL,
+  expires_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS tokens (
   hash TEXT PRIMARY KEY,
   kind TEXT NOT NULL,

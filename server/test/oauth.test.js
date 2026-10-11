@@ -68,18 +68,23 @@ test('parcours complet : register, authorize, callback, token (form-urlencoded),
   assert.equal(r.status, 200);
   const n = await r.json();
   assert.notEqual(n.refresh_token, o.jetons.refresh_token);
-  assert.equal((await o.token({ grant_type: 'refresh_token', refresh_token: o.jetons.refresh_token })).status, 400);
   const c2 = await b.clientMcp(n.access_token);
   assert.equal((await c2.appeler('lister_lecons')).data.length, 0);
   // seuls les condensats sont stockés
   const lignes = b.db.prepare('SELECT hash FROM tokens').all().map((x) => x.hash);
   assert.ok(!lignes.includes(n.access_token) && !lignes.includes(n.refresh_token));
+  // rejeu de l'ancien refresh : refusé, et tous les jetons de ce compte pour ce client sont coupés
+  assert.equal((await o.token({ grant_type: 'refresh_token', refresh_token: o.jetons.refresh_token })).status, 400);
+  assert.equal((await o.token({ grant_type: 'refresh_token', refresh_token: n.refresh_token })).status, 400);
+  await assert.rejects(b.clientMcp(n.access_token).then((c) => c.appeler('lister_lecons')));
 });
 
 test('code à usage unique, PKCE vérifié, resource contrôlé', async () => {
   const o = await b.connecterMcp();
   const rejoue = await o.token({ grant_type: 'authorization_code', code: o.code, code_verifier: o.verifier, redirect_uri: 'https://claude.ai/api/mcp/auth_callback' });
   assert.equal(rejoue.status, 400);
+  // le rejeu du code coupe les jetons déjà émis avec lui
+  await assert.rejects(b.clientMcp(o.jetons.access_token).then((c) => c.appeler('demarrer')));
   // resource étranger à /authorize : redirection d'erreur
   const reg = await (await fetch(b.base + '/register', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ redirect_uris: ['https://claude.ai/api/mcp/auth_callback'], token_endpoint_auth_method: 'none' }) })).json();
   const a = new URL(b.base + '/authorize');
@@ -192,8 +197,10 @@ test('accord : sans accord préalable la page s\'affiche et aucun code n\'est é
   const html = await r3.text();
   assert.match(html, /Autoriser Claude à accéder à ton espace Révision \?/);
   assert.match(html, /claude\.ai/);
-  assert.match(html, /Claude &lt;b&gt;/);
-  assert.ok(!html.includes('<b>') && !html.includes('—') && !/<style|style=|<script|onclick/i.test(html));
+  assert.match(html, /<strong>Claude<\/strong> demande/);
+  assert.match(html, /Alors refuse/);
+  assert.ok(!/&lt;b&gt;/.test(html), 'client_name ne doit pas être affiché');
+  assert.ok(!html.includes('<b>') && !html.includes('\u2014') && !/<style|style=|<script|onclick/i.test(html));
   assert.match(r3.headers.get('content-security-policy'), /style-src 'self'/);
   assert.match(r3.headers.get('content-security-policy'), /frame-ancestors 'none'/);
   assert.match(r3.headers.getSetCookie().join('|'), /rev_accord=[^;]+; Max-Age=600; Path=\/; HttpOnly; SameSite=Lax/);

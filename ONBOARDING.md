@@ -41,6 +41,8 @@ Puis appelle `demarrer`. Si l'outil n'apparaît toujours pas, demande à l'élè
 
 Problèmes connus :
 - « Places complètes » ou « Connexion Google bientôt disponible » : le service est plein ou pas encore ouvert. Passe au plan B.
+- « Compte non invité » : ce compte Google n'est pas sur la liste. Dis à l'élève de prévenir la personne qui lui a donné le lien, avec son adresse Gmail, puis passe au plan B.
+- « E-mail non vérifié » : l'adresse de ce compte Google n'est pas confirmée. L'élève la confirme chez Google, puis réessaie.
 - L'offre gratuite de Claude n'accepte qu'un seul connecteur personnalisé. S'il y en a déjà un, l'élève peut le retirer ou passer au plan B.
 - Après deux essais ratés, passe au plan B sans insister.
 

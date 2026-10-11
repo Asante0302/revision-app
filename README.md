@@ -28,7 +28,7 @@ Astuce : ajoute le site à l'écran d'accueil de ton téléphone.
 
 ## État du projet
 
-Version de test, 10 places au plus. Si Google affiche un avertissement « application non vérifiée » ou si le site dit « Places complètes », préviens la personne qui t'a donné ce lien. Sans connecteur, Claude te donne tes fichiers à la fin de l'accueil : garde-les et recolle-les quand tu veux réviser.
+Version de test, 10 places au plus. Si Google affiche un avertissement « application non vérifiée », ou si le site dit « Places complètes » ou « Compte non invité », préviens la personne qui t'a donné ce lien (donne-lui ton adresse Gmail). « E-mail non vérifié » : confirme ton adresse chez Google, puis réessaie. Sans connecteur, Claude te donne tes fichiers à la fin de l'accueil : garde-les et recolle-les quand tu veux réviser.
 
 ## Tes données
 

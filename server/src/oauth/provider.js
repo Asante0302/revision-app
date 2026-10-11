@@ -77,6 +77,17 @@ export function creerProvider({ config, db, demarrerGoogle }) {
     return { access_token: acces, token_type: 'Bearer', expires_in: DUREE_ACCES, refresh_token: refresh };
   }
 
+  // Un code ou un refresh déjà échangé qui revient : il a pu être volé. On coupe tous les jetons de ce compte pour ce client.
+  function marquerUtilise(h, userId, clientId, expiresAt) {
+    db.prepare('INSERT OR REPLACE INTO jetons_utilises (hash,user_id,client_id,expires_at) VALUES (?,?,?,?)').run(h, userId, clientId, expiresAt);
+  }
+  function rejeu(h) {
+    const u = db.prepare('SELECT user_id, client_id FROM jetons_utilises WHERE hash=?').get(h);
+    if (!u) return false;
+    db.prepare('DELETE FROM tokens WHERE user_id=? AND client_id=?').run(u.user_id, u.client_id);
+    return true;
+  }
+
   // Appelé à la fin de la connexion Google d'une autorisation MCP.
   function creerCode(userId, p) {
     const code = aleatoire(32);
@@ -102,6 +113,7 @@ export function creerProvider({ config, db, demarrerGoogle }) {
     },
 
     async challengeForAuthorizationCode(client, code) {
+      if (rejeu(sha256(code))) throw new InvalidGrantError('Code déjà utilisé.'); // le SDK vérifie PKCE avant l'échange
       const r = db.prepare('SELECT client_id, code_challenge, expires_at FROM auth_codes WHERE hash=?').get(sha256(code));
       if (!r || r.client_id !== client.client_id || r.expires_at < maintenant()) throw new InvalidGrantError('Code invalide ou expiré.');
       return r.code_challenge;
@@ -109,25 +121,29 @@ export function creerProvider({ config, db, demarrerGoogle }) {
 
     async exchangeAuthorizationCode(client, code, _verifier, redirectUri, resource) {
       verifierResource(resource);
+      const h = sha256(code);
+      if (rejeu(h)) throw new InvalidGrantError('Code déjà utilisé.');
       return transaction(db, () => {
-        const h = sha256(code);
         const r = db.prepare('SELECT * FROM auth_codes WHERE hash=?').get(h);
         db.prepare('DELETE FROM auth_codes WHERE hash=?').run(h); // usage unique
         if (!r || r.client_id !== client.client_id || r.expires_at < maintenant()) throw new InvalidGrantError('Code invalide ou expiré.');
         if (!compteAutorise(r.user_id)) throw new InvalidGrantError('Compte non invité.');
         if (redirectUri !== undefined && redirectUri !== r.redirect_uri) throw new InvalidGrantError('redirect_uri différent de la demande.');
+        marquerUtilise(h, r.user_id, r.client_id, r.expires_at);
         return emettre(r.user_id, client.client_id, r.resource);
       });
     },
 
     async exchangeRefreshToken(client, refreshToken, _scopes, resource) {
       verifierResource(resource);
+      const h = sha256(refreshToken);
+      if (rejeu(h)) throw new InvalidGrantError('Jeton de rafraîchissement déjà utilisé.');
       return transaction(db, () => {
-        const h = sha256(refreshToken);
         const r = db.prepare("SELECT * FROM tokens WHERE hash=? AND kind='refresh'").get(h);
         if (!r || r.client_id !== client.client_id || r.expires_at < maintenant()) throw new InvalidGrantError('Jeton de rafraîchissement invalide ou expiré.');
         if (!compteAutorise(r.user_id)) throw new InvalidGrantError('Compte non invité.');
         db.prepare('DELETE FROM tokens WHERE hash=?').run(h); // rotation
+        marquerUtilise(h, r.user_id, r.client_id, r.expires_at);
         return emettre(r.user_id, client.client_id, r.resource);
       });
     },
@@ -153,6 +169,7 @@ export function purger(db) {
   const t = maintenant();
   db.prepare('DELETE FROM tokens WHERE expires_at < ?').run(t);
   db.prepare('DELETE FROM auth_codes WHERE expires_at < ?').run(t);
+  db.prepare('DELETE FROM jetons_utilises WHERE expires_at < ?').run(t);
   db.prepare('DELETE FROM google_states WHERE expires_at < ?').run(t);
   db.prepare('DELETE FROM consentements_attente WHERE expires_at < ?').run(t);
   db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(t);

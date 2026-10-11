@@ -32,6 +32,7 @@ export function creerConnexion({ config, db, google, provider }) {
   const prefixe = secure ? '__Host-' : '';
   const COOKIE_ETAT = `${prefixe}rev_etat`;
   const COOKIE_ACCORD = `${prefixe}rev_accord`;
+  const COOKIE_SESSION = `${prefixe}rev_sess`;
   const poser = (res, nom, valeur, maxAge) => res.append('Set-Cookie', `${nom}=${valeur}; Max-Age=${maxAge}; Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`);
 
   function pageIndisponible(res) {
@@ -50,11 +51,11 @@ export function creerConnexion({ config, db, google, provider }) {
   function creerSession(res, userId) {
     const jeton = aleatoire(32);
     db.prepare('INSERT INTO sessions (hash,user_id,expires_at) VALUES (?,?,?)').run(sha256(jeton), userId, maintenant() + DUREE_SESSION);
-    res.append('Set-Cookie', `rev_sess=${jeton}; Max-Age=${DUREE_SESSION}; Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`);
+    res.append('Set-Cookie', `${COOKIE_SESSION}=${jeton}; Max-Age=${DUREE_SESSION}; Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`);
   }
   const effacerEtat = (res) => poser(res, COOKIE_ETAT, '', 0);
   const effacerAccord = (res) => poser(res, COOKIE_ACCORD, '', 0);
-  const effacerCookie = (res) => res.append('Set-Cookie', `rev_sess=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`);
+  const effacerCookie = (res) => res.append('Set-Cookie', `${COOKIE_SESSION}=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`);
 
   const limite = rateLimit({ windowMs: 15 * 60 * 1000, limit: config.limiteAuth ?? 60, standardHeaders: true, legacyHeaders: false, message: { erreur: 'Trop de tentatives, réessaie plus tard.' } });
   router.use('/auth', limite);
@@ -130,9 +131,7 @@ export function creerConnexion({ config, db, google, provider }) {
       db.prepare('INSERT INTO consentements_attente (hash,user_id,client_id,payload,nav,expires_at) VALUES (?,?,?,?,?,?)')
         .run(sha256(jeton), user.id, p.client_id, JSON.stringify(p), sha256(navigateur), maintenant() + DUREE_STATE);
       poser(res, COOKIE_ACCORD, navigateur, DUREE_STATE);
-      let nomClient = 'Claude';
-      try { nomClient = String(JSON.parse(db.prepare('SELECT json FROM oauth_clients WHERE client_id=?').get(p.client_id)?.json ?? '{}').client_name || 'Claude').slice(0, 60); } catch { /* nom par défaut */ }
-      return envoyerConsentement(res, { nomClient, hote: new URL(p.redirect_uri).host, jeton });
+      return envoyerConsentement(res, { hote: new URL(p.redirect_uri).host, jeton }); // nom fixe : client_name est choisi par celui qui s'inscrit
     }
     creerSession(res, user.id);
     res.redirect(302, '/');
@@ -176,7 +175,7 @@ export function creerConnexion({ config, db, google, provider }) {
   });
 
   router.post('/auth/logout', (req, res) => {
-    const j = lireCookie(req, 'rev_sess');
+    const j = lireCookie(req, COOKIE_SESSION);
     if (j) db.prepare('DELETE FROM sessions WHERE hash=?').run(sha256(j));
     effacerCookie(res);
     res.json({ ok: true });
