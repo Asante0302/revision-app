@@ -1,0 +1,42 @@
+# /etc/systemd/system/revision-app.service  (modèle)
+# Prérequis : utilisateur système "revision" sans shell, dépôt dans /opt/revision-app,
+# fichier /var/lib/revision-app/env en 600 (voir env.example).
+#   useradd --system --home-dir /var/lib/revision-app --shell /usr/sbin/nologin revision
+[Unit]
+Description=Révision (serveur MCP, OAuth et site)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=revision
+Group=revision
+WorkingDirectory=/opt/revision-app/server
+EnvironmentFile=/var/lib/revision-app/env
+ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning src/server.js
+Restart=on-failure
+RestartSec=3
+
+# Durcissement
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/revision-app
+StateDirectory=revision-app
+StateDirectoryMode=0700
+PrivateTmp=true
+PrivateDevices=true
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

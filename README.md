@@ -1,12 +1,12 @@
 # Révision
 
-Ton assistant de révision : il t'aide à ranger tes cours, te fait des fiches, des cartes et des quiz, et te dit quoi réviser quand tu lui demandes.
+Ton assistant de révision : Claude range tes cours dans ton Google Drive, te fait des fiches, des cartes et des quiz, et te dit quoi réviser. Tu révises ensuite sur ton téléphone avec le site [revision.funnelforge.fr](https://revision.funnelforge.fr).
 
-Tu n'as rien à installer. Tu as juste besoin d'un compte Claude (gratuit pour commencer, Pro conseillé). Attention : les conditions de Claude exigent d'avoir 18 ans ou plus. Moins de 18 ans : n'utilise pas claude.ai, ton compte peut être désactivé.
+Tu n'as rien à installer. Tu as juste besoin d'un compte Claude (l'offre gratuite suffit pour commencer, Pro conseillé) et d'un compte Google. Attention : les conditions de Claude exigent d'avoir 18 ans ou plus. Moins de 18 ans : n'utilise pas claude.ai, ton compte peut être désactivé.
 
 ## Commencer
 
-1. Ouvre [claude.ai](https://claude.ai) (sur ordinateur, c'est plus simple pour la première fois).
+1. Sur ordinateur, ouvre [claude.ai](https://claude.ai) (la première fois se fait sur ordinateur).
 2. Crée une nouvelle conversation.
 3. Copie et colle ce message, puis envoie :
 
@@ -14,22 +14,33 @@ Tu n'as rien à installer. Tu as juste besoin d'un compte Claude (gratuit pour c
 Lis ce guide et suis-le étape par étape avec moi : https://raw.githubusercontent.com/Asante0302/revision-app/main/ONBOARDING.md
 ```
 
-Claude te pose ensuite 12 questions, une par une. Ça prend environ 10 minutes.
+Claude t'aide à brancher ton Google Drive (2 minutes), puis te pose 12 questions, une par une. Ça prend environ 15 minutes en tout.
 
 Si Claude répond qu'il n'arrive pas à ouvrir le lien : ouvre [le guide](https://raw.githubusercontent.com/Asante0302/revision-app/main/ONBOARDING.md) toi-même, copie tout le texte de la page, colle-le dans la conversation et envoie.
 
-## Ce que tu obtiens
+## Ensuite, chaque jour
 
-- Une fiche par leçon, à ton style.
-- Des cartes et un quiz pour t'entraîner, même depuis ton téléphone.
-- Un planning : quoi réviser aujourd'hui, avant chaque contrôle.
+- **Un nouveau cours** : sur le site, « Ajouter un cours » et prends-le en photo. Puis dans Claude : « Range mes cours ». Claude en fait une fiche, des cartes, un quiz et des exercices.
+- **Réviser** : ouvre le site, page « Aujourd'hui ». Ou dis à Claude « Je veux réviser ».
+- **Un exercice à corriger** : bouton « Faire corriger » sur le site, puis colle le message dans Claude.
+
+Astuce : ajoute le site à l'écran d'accueil de ton téléphone.
 
 ## État du projet
 
-Version de test. Le connecteur (qui rangera tes fichiers tout seul dans ton Google Drive) n'est pas encore ouvert, sans date pour l'instant. Claude ne garde rien d'une conversation à l'autre : il te donne tes fichiers à la fin, tu les gardes et tu les recolles quand tu veux réviser.
+Version de test, 10 places au plus. Si Google affiche un avertissement « application non vérifiée » ou si le site dit « Places complètes », préviens la personne qui t'a donné ce lien. Sans connecteur, Claude te donne tes fichiers à la fin de l'accueil : garde-les et recolle-les quand tu veux réviser.
 
 ## Tes données
 
-Ce que tu écris est envoyé à Claude (Anthropic), comme toute conversation. Rien n'arrive dans ce dépôt ni chez l'auteur du projet. Ne donne ni ton nom de famille ni le nom de ton école.
+- Tes cours et tes fiches sont rangés dans **ton** Google Drive, dossier « Révision ». Le service ne voit que les fichiers qu'il a créés lui-même, rien d'autre de ton Drive.
+- Le serveur garde ton adresse e-mail et ton nom Google, ta progression (cartes, quiz) et une copie des leçons pour afficher le site. Tu peux tout effacer depuis la page « Compte » du site.
+- Ce que tu écris à Claude est envoyé à Claude (Anthropic), comme toute conversation.
+- Ne donne ni ton nom de famille ni le nom de ton école.
+
+Détails : [confidentialité](https://revision.funnelforge.fr/confidentialite.html) et [conditions](https://revision.funnelforge.fr/conditions.html).
+
+## Pour les curieux
+
+Le code est ici : `server/` (connecteur et site, Node), `web/` (le site), `deploy/` (installation sur un serveur), `docs/ARCHITECTURE.md` (fonctionnement).
 
 Licence : MIT.

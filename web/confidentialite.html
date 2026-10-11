@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Confidentialité · Révision</title>
+  <meta name="theme-color" content="#3b5bdb">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="public">
+  <main id="contenu">
+    <a class="retour" href="/">← Retour à Révision</a>
+    <h1>Confidentialité</h1>
+    <p class="doux petit">Dernière mise à jour : 11 octobre 2026</p>
+    <p>Révision est un petit projet ouvert à quelques élèves. Cette page explique, sans détour, ce qui est gardé et où.</p>
+
+    <h2>Ce qui est gardé sur le serveur</h2>
+    <ul class="liste-claire">
+      <li>Ton compte Google : un identifiant, ton adresse e-mail et ton nom, tels que Google nous les donne à la connexion.</li>
+      <li>Un jeton qui permet au serveur d’écrire dans ton Drive, gardé chiffré.</li>
+      <li>Des codes de connexion (site et connecteur Claude), gardés sous forme d’empreinte : on ne peut pas les relire.</li>
+      <li>Une copie de tes leçons (fiche, cartes, quiz, exercices) pour pouvoir les afficher vite dans le site.</li>
+      <li>Ta progression : les cartes que tu sais ou non, et les scores de tes quiz.</li>
+    </ul>
+
+    <h2>Ce qui est dans ton Google Drive</h2>
+    <p>Un dossier « Révision » : les fichiers de réglages, ton calendrier, tes photos envoyées depuis le site (dans « À trier ») et tes leçons rangées par matière. Le serveur n’a accès qu’aux fichiers qu’il a lui-même créés dans ton Drive, pas au reste. Le Drive est la source de vérité : ces fichiers t’appartiennent et restent chez toi.</p>
+
+    <h2>Pas d’intelligence artificielle sur le serveur</h2>
+    <p>Le serveur ne fait aucun appel à une IA. C’est Claude, dans ton propre compte claude.ai, qui lit tes cours et fabrique les fiches, par le connecteur que tu as autorisé. Ce que Claude fait de tes données dépend des règles d’Anthropic et de ton abonnement, pas de ce site.</p>
+
+    <h2>Ce qui n’est pas fait</h2>
+    <ul class="liste-claire">
+      <li>Pas de publicité, pas de revente de données, pas de suivi statistique.</li>
+      <li>Le contenu de tes cours, tes codes de connexion et ton e-mail ne sont pas écrits dans les journaux du serveur.</li>
+      <li>Le site n’utilise qu’un cookie, nécessaire pour te garder connecté·e (30 jours).</li>
+    </ul>
+
+    <h2>Supprimer tes données</h2>
+    <p>Dans le site, va dans « Compte » puis « Supprimer mon compte » : tout ce que le serveur garde sur toi est effacé. Tes fichiers dans ton Google Drive ne sont pas touchés ; tu peux les supprimer toi-même. Tu peux aussi retirer l’accès de Révision depuis les réglages de ton compte Google.</p>
+
+    <h2>Contact</h2>
+    <p>Pour une question ou une demande de suppression : <span data-contact></span>.</p>
+
+    <p class="pied"><a href="/confidentialite.html">Confidentialité</a> · <a href="/conditions.html">Conditions</a></p>
+  </main>
+  <script src="/config.js"></script>
+  <script src="/legal.js"></script>
+</body>
+</html>

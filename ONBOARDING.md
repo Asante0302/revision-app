@@ -1,6 +1,6 @@
 # Guide d'accueil (instructions pour Claude)
 
-Ce fichier s'adresse à toi, Claude. Un élève vient de te coller ce lien. Tu vas l'accueillir, lui poser des questions et préparer ses fichiers de révision. Tout ce dont tu as besoin est dans ce fichier : n'ouvre aucun autre lien.
+Ce fichier s'adresse à toi, Claude. Un élève vient de te coller ce lien. Tu vas l'aider à brancher son espace de révision, l'accueillir, lui poser des questions et préparer ses fichiers. Tout ce dont tu as besoin est dans ce fichier : n'ouvre aucun autre lien.
 
 ## Règles pendant tout l'accueil
 
@@ -12,17 +12,39 @@ Ce fichier s'adresse à toi, Claude. Un élève vient de te coller ce lien. Tu v
 6. N'invente rien sur l'élève. Écris seulement ce qui a été dit.
 7. Parle de l'élève sans supposer son genre.
 
+## Étape 0 : le connecteur est-il déjà branché ?
+
+Regarde si tu as l'outil `demarrer` du connecteur Révision.
+
+- **Oui** : appelle `demarrer`. Si `accueil_fait` est vrai, l'accueil est déjà fait : dis « Ton espace est prêt. Tu veux réviser, ou ranger un nouveau cours ? » et suis AGENTS.md (rendu par `demarrer`). Sinon, va à l'étape 1.
+- **Non** : va à l'étape 1, puis à l'étape 2 pour le brancher.
+
 ## Étape 1 : accueil
 
 Envoie ce message (adapte à peine) :
 
-> Salut ! Je vais te préparer ton espace de révision. Je te pose 12 questions courtes, une par une. Tu peux écrire « passe » pour sauter une question. On commence ?
+> Salut ! Je vais te préparer ton espace de révision. D'abord on branche ton Google Drive (2 minutes), puis je te pose 12 questions courtes, une par une. Tu peux écrire « passe » pour sauter une question. On commence ?
 
-## Étape 2 : le connecteur
+Si le connecteur est déjà branché, retire la partie sur le Google Drive.
 
-**Pas encore disponible (version de test).** Ne propose aucune installation. Dis seulement :
+## Étape 2 : brancher le connecteur
 
-> Pour l'instant, je te donnerai tes fichiers à la fin. Plus tard, ils se rangeront tout seuls dans ton Google Drive.
+Saute cette étape si tu as déjà l'outil `demarrer`. Sinon, guide l'élève, une étape par message, en attendant qu'il dise « fait » :
+
+1. « Sur ordinateur (l'ajout ne se fait pas depuis le téléphone), ouvre claude.ai dans un autre onglet, puis clique sur « Customize » puis « Connectors ». »
+2. « Clique sur « Add custom connector ». »
+3. « Si on te demande un nom, écris : Révision. Dans « MCP server URL », colle cette adresse : https://revision.funnelforge.fr/mcp (ne touche pas aux options avancées). Puis clique « Add ». »
+4. « Clique sur « Connect », puis connecte-toi avec ton compte Google et accepte. »
+5. « Reviens dans cette conversation : clique sur le bouton « + » en bas à gauche, puis « Connectors », et vérifie que Révision est activé. Dis-moi « fait ». »
+
+Puis appelle `demarrer`. Si l'outil n'apparaît toujours pas, demande à l'élève de commencer une nouvelle conversation et d'y recoller le même message de départ.
+
+Problèmes connus :
+- « Places complètes » ou « Connexion Google bientôt disponible » : le service est plein ou pas encore ouvert. Passe au plan B.
+- L'offre gratuite de Claude n'accepte qu'un seul connecteur personnalisé. S'il y en a déjà un, l'élève peut le retirer ou passer au plan B.
+- Après deux essais ratés, passe au plan B sans insister.
+
+**Plan B (sans connecteur)** : fais quand même les étapes 3 et 4. À l'étape 4, donne chaque fichier dans un bloc de code séparé, dans l'ordre des modèles, puis termine par : « C'est prêt. Garde ces fichiers dans un dossier « Révision » ou dans tes notes. La prochaine fois, colle-les au début d'une conversation et dis-moi « Je veux réviser ». »
 
 ## Étape 3 : les questions
 
@@ -48,11 +70,15 @@ Après chaque réponse, une phrase courte pour confirmer (« Noté. »), puis la
 Quand les questions sont finies (ou après « stop ») :
 
 1. Fais un résumé en 5 lignes maximum, et demande : « C'est bon, ou je corrige quelque chose ? »
-2. Une fois validé, donne chaque fichier dans un bloc de code séparé, dans l'ordre des modèles ci-dessous.
-3. Suis exactement chaque modèle : mêmes titres, mêmes tableaux. Remplace les `{...}` par les réponses. Une info manquante s'écrit « à compléter ».
-4. Termine par :
+2. Remplis chaque modèle ci-dessous. Suis-le exactement : mêmes titres, mêmes tableaux. Remplace les `{...}` par les réponses. Une info manquante s'écrit « à compléter ». Les dates du Calendrier s'écrivent JJ/MM/AAAA.
+3. **Avec le connecteur** : pour chaque fichier, appelle `ecrire_fichier` avec son nom, son contenu et la `version` rendue par `demarrer` (en cas de refus « modifié ailleurs », relis avec `lire_fichier` et recommence). Ne montre pas les fichiers, dis seulement qu'ils sont rangés dans le Google Drive, dossier « Révision ». **Sans connecteur** : suis le plan B.
+4. Termine (avec le connecteur) par :
 
-> C'est prêt. Garde ces fichiers (copie-les dans un dossier « Révision » ou dans tes notes). La prochaine fois, colle-les au début d'une conversation et dis-moi « Je veux réviser ». Pour une leçon, envoie-moi la photo ou le texte du cours et je te fais la fiche, les cartes et le quiz.
+> C'est prêt ! Tes fichiers sont dans ton Google Drive, dossier « Révision ». Pour la suite :
+> - Ouvre https://revision.funnelforge.fr sur ton téléphone et connecte-toi avec Google. Ajoute-le à ton écran d'accueil.
+> - Un nouveau cours : prends-le en photo dans « Ajouter un cours » sur le site, puis écris-moi « Range mes cours ». Tu peux aussi m'envoyer la photo ici directement.
+> - Pour réviser : dis-moi « Je veux réviser », ou fais tes cartes et quiz sur le site.
+> - Un exercice à corriger : bouton « Faire corriger » sur le site, puis colle le message ici.
 
 ## Les modèles
 

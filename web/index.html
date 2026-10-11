@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Révision</title>
+  <meta name="description" content="Révise tes cours depuis ton téléphone : fiches, cartes, quiz et exercices.">
+  <meta name="theme-color" content="#3b5bdb">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <a class="skip" href="#contenu">Aller au contenu</a>
+  <main id="contenu" tabindex="-1"><p class="chargement">Chargement…</p></main>
+  <p id="annonce" class="sr-only" role="status" aria-live="polite"></p>
+  <nav id="nav" class="nav cache" aria-label="Navigation principale"></nav>
+  <noscript><p class="boite">Le site a besoin de JavaScript pour fonctionner. Active-le dans ton navigateur.</p></noscript>
+  <script src="/config.js"></script>
+  <script src="/vendor/marked.umd.js"></script>
+  <script src="/vendor/purify.min.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
