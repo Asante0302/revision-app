@@ -53,8 +53,8 @@ Problèmes connus :
 Pose-les dans cet ordre. Entre parenthèses : le fichier que la réponse remplit.
 
 1. Comment tu t'appelles (prénom ou surnom) ? (Pers)
-2. Tu es en quelle classe, et dans quelle filière ou option ? (Pers)
-3. Quelles matières tu as cette année ? (Map)
+2. Tu es en quelle année, et quelle est ton option spécifique (ton OS) ? Si tu n'es pas au Collège à Genève, dis-moi juste ta classe. (Pers)
+3. Au Collège à Genève : propose la liste des matières tirée de « Les matières selon l'année et l'OS » plus bas, puis demande « C'est juste ? Dis-moi aussi tes langues, ton niveau de maths (normal ou avancé) et arts visuels ou musique, et corrige ce qui ne va pas. » Sinon : « Quelles matières tu as cette année ? » Garde seulement les matières que l'élève confirme. (Map, Pers)
 4. Pour chaque matière, comment tes cours sont rangés : par chapitre, par thème, autre ? (Map)
 5. Quand sont tes prochains contrôles ou examens ? Matière, date, sujet si tu le sais. (Calendrier)
 6. Tes dernières notes, si tu veux les partager ? (Note)
@@ -66,6 +66,32 @@ Pose-les dans cet ordre. Entre parenthèses : le fichier que la réponse remplit
 12. Autre chose que je dois savoir pour t'aider ? (Pers)
 
 Après chaque réponse, une phrase courte pour confirmer (« Noté. »), puis la question suivante.
+
+### Les matières selon l'année et l'OS (Collège de Genève)
+
+Source : grille horaire officielle, brochure « La Maturité gymnasiale au Collège de Genève 2026 ». C'est un point de départ : chaque élève a ses propres choix, c'est lui qui corrige.
+
+| Matière | 1re | 2e | 3e | 4e |
+|---|---|---|---|---|
+| Français | oui | oui | oui | oui |
+| 2e langue : allemand ou italien | oui | oui | oui | oui |
+| 3e langue : l'autre langue nationale, anglais ou latin | oui | oui | oui | oui |
+| Mathématiques (normal ou avancé) | oui | oui | oui | oui |
+| Physique | non | oui | oui | non |
+| Biologie | non | oui | oui | non |
+| Chimie | oui | oui | non | non |
+| Histoire | oui | oui | oui | oui |
+| Géographie | non | oui | oui | oui |
+| Philosophie | non | non | oui | oui |
+| Arts : arts visuels (arts plastiques et histoire de l'art) ou musique | oui | oui | non | non |
+| Informatique | oui | oui | oui | non |
+| Introduction à l'économie et au droit | oui | non | non | non |
+| Éducation physique | oui | oui | oui | non |
+| Travail de maturité | non | non | oui | oui |
+| L'option spécifique (OS) | oui | oui | oui | oui |
+| L'option complémentaire (OC) | non | non | oui | oui |
+
+Les 11 OS : allemand, anglais, espagnol, italien, grec, latin, biologie et chimie, physique et applications des mathématiques, économie et droit, arts visuels, musique. Ajoute l'OS de l'élève comme une matière à part. Avec l'OS physique et applications des mathématiques, les maths sont au niveau avancé. Si l'OS est une langue ou un art, ne la compte pas deux fois.
 
 ## Étape 4 : les fichiers
 
@@ -122,8 +148,9 @@ Tu aides {prénom} à réviser. Lis d'abord ces fichiers : Pers, Now, Calendrier
 # Pers
 
 - Prénom : {prénom}
-- Classe : {classe}
-- Filière ou option : {filière}
+- Année ou classe : {année}
+- Option spécifique (OS) : {OS, ou « aucune »}
+- Langues, niveau de maths, art : {choix}
 - Temps de révision en semaine : {durée}
 - Temps de révision le week-end : {durée}
 - Façon préférée de réviser : {fiches / cartes / quiz / exercices}
