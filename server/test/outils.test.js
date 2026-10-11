@@ -34,6 +34,10 @@ test('fichiers : lecture, écriture, conflit de version, nom inconnu, taille', a
   const gros = await A.appeler('ecrire_fichier', { nom: 'Now.md', contenu: 'x'.repeat(100 * 1024 + 1), version: w.data.version });
   assert.equal(gros.isError, true);
   assert.match(gros.data, /100 Ko/);
+  // un Pers resté sur l'ancien modèle (espace créé avant le changement) laisse l'accueil à faire
+  const ancien = '# Pers\n\n- Prénom : {prénom}\n- Classe : {classe}\n- Filière ou option : {filière}\n- Temps de révision en semaine : {durée}\n- Temps de révision le week-end : {durée}\n- Façon préférée de réviser : {fiches / cartes / quiz / exercices}\n- Remarques : {autre}\n';
+  await A.appeler('ecrire_fichier', { nom: 'Pers.md', contenu: ancien, version: (await A.appeler('lire_fichier', { nom: 'Pers.md' })).data.version });
+  assert.equal((await A.appeler('demarrer')).data.accueil_fait, false);
   // une accolade écrite par l'élève ne fait pas croire que l'accueil reste à faire
   const pv = (await A.appeler('lire_fichier', { nom: 'Pers.md' })).data.version;
   await A.appeler('ecrire_fichier', { nom: 'Pers.md', contenu: '# Pers\n- Prénom : Alice\n- Remarques : j\'aime les {accolades}', version: pv });

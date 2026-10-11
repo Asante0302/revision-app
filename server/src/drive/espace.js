@@ -15,6 +15,13 @@ export function nomFichierValide(nom) {
   return trouve;
 }
 
+// Modèles remplacés : un espace créé avec l'un d'eux et jamais rempli reste « accueil à faire ».
+const ANCIENS_MODELES = {
+  'Pers.md': [
+    '# Pers\n\n- Prénom : {prénom}\n- Classe : {classe}\n- Filière ou option : {filière}\n- Temps de révision en semaine : {durée}\n- Temps de révision le week-end : {durée}\n- Façon préférée de réviser : {fiches / cartes / quiz / exercices}\n- Remarques : {autre}\n',
+  ],
+};
+
 // L'espace Révision/ dans le Drive d'un élève.
 export function creerEspace({ drive, templates }) {
   async function dossier(nom, parentId, creer = true) {
@@ -24,8 +31,8 @@ export function creerEspace({ drive, templates }) {
     return (await drive.creerDossier(nom, parentId)).id;
   }
   const racine = (creer = true) => dossier(NOM_RACINE, 'root', creer);
-  // Un fichier encore égal à son modèle n'a pas été rempli (une accolade écrite par l'élève ne compte pas).
-  const estModele = (nom, texte) => texte.trim() === String(templates[nom]).trim();
+  // Un fichier encore égal à son modèle (actuel ou ancien) n'a pas été rempli (une accolade écrite par l'élève ne compte pas).
+  const estModele = (nom, texte) => [templates[nom], ...(ANCIENS_MODELES[nom] ?? [])].some((m) => texte.trim() === String(m).trim());
   async function aTrier(creer = true) {
     const r = await racine(creer);
     return r ? dossier(NOM_A_TRIER, r, creer) : null;

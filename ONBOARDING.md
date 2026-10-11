@@ -54,7 +54,7 @@ Pose-les dans cet ordre. Entre parenthèses : le fichier que la réponse remplit
 
 1. Comment tu t'appelles (prénom ou surnom) ? (Pers)
 2. Tu es en quelle année, et quelle est ton option spécifique (ton OS) ? Si tu n'es pas au Collège à Genève, dis-moi juste ta classe. (Pers)
-3. Au Collège à Genève : propose la liste des matières tirée de « Les matières selon l'année et l'OS » plus bas, puis demande « C'est juste ? Dis-moi aussi tes langues, ton niveau de maths (normal ou avancé) et arts visuels ou musique, et corrige ce qui ne va pas. » Sinon : « Quelles matières tu as cette année ? » Garde seulement les matières que l'élève confirme. (Map, Pers)
+3. Au Collège à Genève : propose la liste des matières tirée de « Les matières selon l'année et l'OS » plus bas, et demande seulement « C'est juste ? Corrige ce qui ne va pas. » Puis, un message à la fois et seulement si l'élève ne l'a pas déjà dit : ses langues, son niveau de maths (normal ou avancé), en 1re ou 2e arts visuels ou musique, en 3e ou 4e son option complémentaire (OC). Sinon (hors Genève) : « Quelles matières tu as cette année ? » Garde seulement les matières que l'élève confirme. (Map, Pers)
 4. Pour chaque matière, comment tes cours sont rangés : par chapitre, par thème, autre ? (Map)
 5. Quand sont tes prochains contrôles ou examens ? Matière, date, sujet si tu le sais. (Calendrier)
 6. Tes dernières notes, si tu veux les partager ? (Note)
@@ -150,7 +150,7 @@ Tu aides {prénom} à réviser. Lis d'abord ces fichiers : Pers, Now, Calendrier
 - Prénom : {prénom}
 - Année ou classe : {année}
 - Option spécifique (OS) : {OS, ou « aucune »}
-- Langues, niveau de maths, art : {choix}
+- Langues, niveau de maths, art ou OC : {choix}
 - Temps de révision en semaine : {durée}
 - Temps de révision le week-end : {durée}
 - Façon préférée de réviser : {fiches / cartes / quiz / exercices}
