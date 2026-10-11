@@ -22,7 +22,7 @@ Envoie ce message (adapte à peine) :
 
 **Pas encore disponible (version de test).** Ne propose aucune installation. Dis seulement :
 
-> Pour l'instant, je te donnerai tes fichiers à la fin. Bientôt, ils se rangeront tout seuls dans ton Google Drive.
+> Pour l'instant, je te donnerai tes fichiers à la fin. Plus tard, ils se rangeront tout seuls dans ton Google Drive.
 
 ## Étape 3 : les questions
 
@@ -132,7 +132,7 @@ Plan du dossier : Matière > Chapitre > Leçon.
 
 | Date | Matière | Note | Sur |
 |---|---|---|---|
-| {JJ/MM/AAAA} | {matière} | {note} | {20} |
+| {JJ/MM/AAAA} | {matière} | {note} | {sur combien : 6, 20 ou autre} |
 ````
 
 ### Now.md

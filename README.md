@@ -1,8 +1,8 @@
 # Révision
 
-Ton assistant de révision : il range tes cours, te fait des fiches, des cartes et des quiz, et te dit quoi réviser chaque jour.
+Ton assistant de révision : il t'aide à ranger tes cours, te fait des fiches, des cartes et des quiz, et te dit quoi réviser quand tu lui demandes.
 
-Tu n'as rien à installer. Tu as juste besoin d'un compte Claude (gratuit pour commencer, Pro conseillé). Attention : les conditions de Claude exigent d'avoir 18 ans ou plus.
+Tu n'as rien à installer. Tu as juste besoin d'un compte Claude (gratuit pour commencer, Pro conseillé). Attention : les conditions de Claude exigent d'avoir 18 ans ou plus. Moins de 18 ans : n'utilise pas claude.ai, ton compte peut être désactivé.
 
 ## Commencer
 
@@ -26,7 +26,7 @@ Si Claude répond qu'il n'arrive pas à ouvrir le lien : ouvre [le guide](https:
 
 ## État du projet
 
-Version de test. Le connecteur (qui range tes fichiers tout seul dans ton Google Drive) n'est pas encore ouvert : pour l'instant, Claude te donne tes fichiers à la fin et tu les gardes.
+Version de test. Le connecteur (qui rangera tes fichiers tout seul dans ton Google Drive) n'est pas encore ouvert, sans date pour l'instant. Claude ne garde rien d'une conversation à l'autre : il te donne tes fichiers à la fin, tu les gardes et tu les recolles quand tu veux réviser.
 
 ## Tes données
 
