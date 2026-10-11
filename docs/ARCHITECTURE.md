@@ -38,23 +38,23 @@ docs/          ce fichier, guide d'hébergement
 ```
 
 Variables d'environnement (fichier `/var/lib/revision-app/env`, 600, jamais dans git) :
-`PORT=8650`, `PUBLIC_URL=https://revision.funnelforge.fr`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ENC_KEY` (32 octets en base64, chiffre les jetons Google), `DATA_DIR=/var/lib/revision-app`, `MAX_USERS=10`.
+`PORT=8650`, `PUBLIC_URL=https://revision.funnelforge.fr`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ENC_KEY` (32 octets en base64, chiffre les jetons Google), `DATA_DIR=/var/lib/revision-app`, `MAX_USERS=10` (entier supérieur ou égal à 1, sinon le serveur refuse de démarrer), `ALLOWED_EMAILS` (facultatif : comptes Google invités, séparés par des virgules, sans distinction de majuscules ; vide = ouvert à tous dans la limite de `MAX_USERS` ; sinon « Ce compte n'est pas invité »), `EXTRA_REDIRECT_URIS` (facultatif, tests : redirections OAuth en plus de celles de claude.ai et claude.com).
 Sans `GOOGLE_CLIENT_ID`, le serveur démarre quand même : le site affiche « Connexion Google bientôt disponible » et `/mcp` répond 503 propre.
 
 ## Connexion
 
-Un seul client OAuth Google (type « Application Web »), redirection `PUBLIC_URL/auth/google/callback`, portées `openid email profile https://www.googleapis.com/auth/drive.file`, `access_type=offline`, `prompt=consent` à la première connexion. Le paramètre `state` (aléatoire, à usage unique, 10 min) dit si la connexion vient du site ou d'une autorisation MCP en attente.
+Un seul client OAuth Google (type « Application Web »), redirection `PUBLIC_URL/auth/google/callback`, portées `openid email profile https://www.googleapis.com/auth/drive.file`, `access_type=offline`, `prompt=consent` à la première connexion. Le paramètre `state` (aléatoire, à usage unique, 10 min) est lié au navigateur par le cookie `rev_etat` (HttpOnly, Secure, SameSite=Lax, 10 min, chemin du callback), dont le condensat est gardé avec le state ; sans égalité au retour, page « Lien invalide » avant tout échange de code. Il dit si la connexion vient du site ou d'une autorisation MCP en attente.
 
 Compte : clé = `sub` Google. Création au premier passage si moins de `MAX_USERS` comptes, sinon page « Places complètes ». Le jeton de rafraîchissement Google est chiffré (AES-256-GCM, `ENC_KEY`).
 
 ### Serveur d'autorisation pour claude.ai
 
-Émetteur `PUBLIC_URL`. Métadonnées : `/.well-known/oauth-authorization-server` et `/.well-known/oauth-protected-resource` (et `/.well-known/oauth-protected-resource/mcp`). Enregistrement dynamique `/register` (redirections en https, ou http://localhost / 127.0.0.1). `/authorize` exige PKCE S256, garde la demande, envoie vers Google, puis rend un code (usage unique, 5 min) au `redirect_uri`. `/token` : `authorization_code` et `refresh_token` (rotation). Jeton d'accès opaque 1 h, rafraîchissement 30 jours glissants ; seuls les condensats SHA-256 sont stockés. `/mcp` sans jeton valide : 401 avec `WWW-Authenticate: Bearer resource_metadata="…"`.
+Émetteur `PUBLIC_URL`. Métadonnées : `/.well-known/oauth-authorization-server` et `/.well-known/oauth-protected-resource` (et `/.well-known/oauth-protected-resource/mcp`). Enregistrement dynamique `/register` (redirections acceptées : `https://claude.ai/api/mcp/auth_callback` et `https://claude.com/api/mcp/auth_callback`, plus `EXTRA_REDIRECT_URIS` ; un client qui a des jetons vivants n'est jamais évincé). `/authorize` exige PKCE S256, garde la demande, envoie vers Google, puis rend un code (usage unique, 5 min) au `redirect_uri`. `/token` : `authorization_code` et `refresh_token` (rotation). Jeton d'accès opaque 1 h, rafraîchissement 30 jours glissants ; seuls les condensats SHA-256 sont stockés. `/mcp` sans jeton valide : 401 avec `WWW-Authenticate: Bearer resource_metadata="…"`.
 Utiliser les briques du SDK officiel `@modelcontextprotocol/sdk` quand elles existent (routeur d'autorisation, transport Streamable HTTP).
 
 ### Site
 
-Session par cookie `rev_sess` (HttpOnly, Secure, SameSite=Lax, 30 jours), condensat en base. Toute requête non GET vers `/api` exige un en-tête `Origin` égal à `PUBLIC_URL`.
+Session par cookie `rev_sess` (HttpOnly, Secure, SameSite=Lax, 30 jours), condensat en base. Toute requête non GET vers `/api` exige un en-tête `Origin` égal à `PUBLIC_URL`. Limites par compte : `POST /api/a-trier` 30 requêtes par 15 min, `/mcp` 300 par 15 min. `POST /api/compte/deconnecter-claude` supprime tous les jetons MCP du compte. `ecrire_fichier` refuse de modifier AGENTS.md une fois l'accueil fait.
 
 ## Outils MCP
 

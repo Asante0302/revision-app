@@ -10,13 +10,11 @@ const DUREE_CODE = 300; // 5 min
 const MAX_CLIENTS = 1000;
 const maintenant = () => Math.floor(Date.now() / 1000);
 
-function uriAutorisee(valeur) {
-  let u;
-  try { u = new URL(valeur); } catch { return false; }
-  if (u.username || u.password || u.hash) return false;
-  if (u.protocol === 'https:') return true;
-  return u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1');
-}
+// Seules les redirections de Claude sont acceptées (EXTRA_REDIRECT_URIS en ajoute, pour des tests).
+export const REDIRECTIONS_AUTORISEES = [
+  'https://claude.ai/api/mcp/auth_callback',
+  'https://claude.com/api/mcp/auth_callback',
+];
 
 const sansBarre = (s) => String(s).replace(/#.*$/, '').replace(/\/$/, '');
 
@@ -28,6 +26,8 @@ export function creerProvider({ config, db, demarrerGoogle }) {
     }
   }
 
+  const autorisees = new Set([...REDIRECTIONS_AUTORISEES, ...(config.redirectUrisSupplementaires ?? [])]);
+
   const clientsStore = {
     getClient(id) {
       const r = db.prepare('SELECT json FROM oauth_clients WHERE client_id=?').get(String(id));
@@ -35,12 +35,22 @@ export function creerProvider({ config, db, demarrerGoogle }) {
     },
     registerClient(client) {
       const uris = client.redirect_uris ?? [];
-      if (!uris.length || !uris.every((u) => uriAutorisee(String(u)))) {
-        throw new InvalidClientMetadataError('redirect_uris : https obligatoire (ou http://localhost, http://127.0.0.1).');
+      if (!uris.length || !uris.every((u) => autorisees.has(String(u)))) {
+        throw new InvalidClientMetadataError('redirect_uris : seules les redirections de Claude sont acceptées.');
       }
       transaction(db, () => {
         db.prepare('INSERT INTO oauth_clients (client_id,json,created_at) VALUES (?,?,?)').run(client.client_id, JSON.stringify(client), maintenant());
-        db.prepare('DELETE FROM oauth_clients WHERE client_id IN (SELECT client_id FROM oauth_clients ORDER BY created_at DESC, rowid DESC LIMIT -1 OFFSET ?)').run(MAX_CLIENTS);
+        // Éviction des plus anciens, jamais un client qui a des jetons ou un code vivants.
+        const t = maintenant();
+        const trop = db.prepare('SELECT COUNT(*) AS n FROM oauth_clients').get().n - MAX_CLIENTS;
+        if (trop > 0) {
+          db.prepare(`DELETE FROM oauth_clients WHERE client_id IN (
+            SELECT client_id FROM oauth_clients
+            WHERE client_id <> ?
+              AND client_id NOT IN (SELECT client_id FROM tokens WHERE expires_at >= ?)
+              AND client_id NOT IN (SELECT client_id FROM auth_codes WHERE expires_at >= ?)
+            ORDER BY created_at ASC, rowid ASC LIMIT ?)`).run(client.client_id, t, t, trop);
+        }
       });
       return client;
     },

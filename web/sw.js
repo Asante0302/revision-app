@@ -1,6 +1,6 @@
 /* Service worker minimal : garde l'interface (pas les données) pour un démarrage rapide.
    Il ne touche jamais à /api, /auth, /mcp ni /.well-known. */
-var VERSION = 'revision-ui-v1';
+var VERSION = 'revision-ui-v2';
 var INTERFACE = ['/', '/index.html', '/style.css', '/app.js', '/config.js', '/legal.js', '/manifest.webmanifest',
   '/vendor/marked.umd.js', '/vendor/purify.min.js', '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png',
   '/confidentialite.html', '/conditions.html'];

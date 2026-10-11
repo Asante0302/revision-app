@@ -1,5 +1,6 @@
 import express from 'express';
 import Busboy from 'busboy';
+import rateLimit from 'express-rate-limit';
 import { sha256 } from '../lib/crypto.js';
 import { ErreurMetier, ErreurGoogle } from '../lib/erreurs.js';
 import { nettoyerNom } from '../lib/noms.js';
@@ -98,7 +99,11 @@ export function creerApi({ config, db, comptes, lecons, google, effacerCookie })
     res.json({ ok: true });
   });
 
-  router.post('/a-trier', async (req, res) => {
+  const limiteTri = rateLimit({
+    windowMs: 15 * 60 * 1000, limit: config.limiteTri ?? 30, standardHeaders: true, legacyHeaders: false,
+    keyGenerator: (req) => `u${req.user.id}`, message: { erreur: 'Trop d\'envois, réessaie dans un moment.' },
+  });
+  router.post('/a-trier', limiteTri, async (req, res) => {
     const f = await lireUpload(req);
     const type = detecterType(f.buf, f.declare, f.nom);
     if (!type) throw new ErreurMetier('Format non accepté. Envoie une photo (jpeg, png, webp, heic), un PDF ou un fichier texte.', 415);
@@ -109,6 +114,12 @@ export function creerApi({ config, db, comptes, lecons, google, effacerCookie })
 
   router.get('/a-trier', async (req, res) => {
     res.json(await comptes.espace(req.user.id).listerATrier());
+  });
+
+  router.post('/compte/deconnecter-claude', (req, res) => {
+    db.prepare('DELETE FROM tokens WHERE user_id=?').run(req.user.id);
+    db.prepare('DELETE FROM auth_codes WHERE user_id=?').run(req.user.id);
+    res.json({ ok: true });
   });
 
   router.delete('/compte', async (req, res) => {

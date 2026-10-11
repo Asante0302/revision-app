@@ -35,6 +35,14 @@ RestrictSUIDSGID=true
 LockPersonality=true
 MemoryDenyWriteExecute=false
 SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+ProtectProc=invisible
+ProcSubset=pid
+ProtectClock=true
+ProtectHostname=true
+ProtectKernelLogs=true
+RestrictRealtime=true
 CapabilityBoundingSet=
 UMask=0077
 

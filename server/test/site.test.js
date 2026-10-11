@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { demarrerBanc, PACK } from './aide/banc.js';
 import { lireCalendrier, controlesProches } from '../src/lib/calendrier.js';
 import { apresReponse } from '../src/lib/leitner.js';
+import { chargerConfig } from '../src/config.js';
 import { FICHIERS } from '../src/drive/espace.js';
 
 const ici = path.dirname(fileURLToPath(import.meta.url));
@@ -109,7 +110,8 @@ test('site : session par cookie, Origin exigée hors GET, déconnexion', async (
     const moi = await r.json();
     assert.deepEqual(moi, { email: 'a@exemple.test', nom: 'Alice', connecteur_url: b.base + '/mcp', google_pret: true });
     // cookie : HttpOnly + SameSite=Lax (Secure seulement en https)
-    const r1 = await b.manuel(b.base + '/auth/login'); const r2 = await b.manuel(r1.headers.get('location')); const r3 = await b.manuel(r2.headers.get('location'));
+    const nav = b.navigateur();
+    const r1 = await nav.manuel(b.base + '/auth/login'); const r2 = await nav.manuel(r1.headers.get('location')); const r3 = await nav.manuel(r2.headers.get('location'));
     assert.match(r3.headers.get('set-cookie'), /rev_sess=.+; Max-Age=2592000; Path=\/; HttpOnly; SameSite=Lax/);
     // Origin
     for (const headers of [{}, { origin: 'https://evil.example' }]) {
@@ -161,13 +163,14 @@ test('suppression de compte : données du serveur effacées, Drive intact, jeton
     const r = await fetch(b.base + '/mcp', { method: 'POST', headers: { authorization: `Bearer ${o.jetons.access_token}`, 'content-type': 'application/json' }, body: '{}' });
     assert.equal(r.status, 401);
     // Reconnexion : Google ne redonne pas de refresh_token sans consentement, le serveur redemande prompt=consent
-    const r1 = await b.manuel(b.base + '/auth/login');
-    const r2 = await b.manuel(r1.headers.get('location'));
+    const nav = b.navigateur();
+    const r1 = await nav.manuel(b.base + '/auth/login');
+    const r2 = await nav.manuel(r1.headers.get('location'));
     assert.equal(b.fg.etat.dernierAuth.prompt, undefined);
-    const r3 = await b.manuel(r2.headers.get('location')); // pas de refresh_token : retour vers Google avec consentement
-    const r4 = await b.manuel(r3.headers.get('location'));
+    const r3 = await nav.manuel(r2.headers.get('location')); // pas de refresh_token : retour vers Google avec consentement
+    const r4 = await nav.manuel(r3.headers.get('location'));
     assert.equal(b.fg.etat.dernierAuth.prompt, 'consent');
-    const r5 = await b.manuel(r4.headers.get('location'));
+    const r5 = await nav.manuel(r4.headers.get('location'));
     assert.equal(r5.headers.get('location'), '/');
     assert.match(r5.headers.get('set-cookie'), /rev_sess=/);
   } finally { await b.fermer(); }
@@ -198,5 +201,60 @@ test('jeton Google refusé (invalid_grant) : message de reconnexion, refresh eff
     assert.equal(r.isError, true);
     assert.match(r.data, /reconnecte-toi/);
     assert.equal(b.db.prepare('SELECT refresh_enc FROM users').get().refresh_enc, null);
+  } finally { await b.fermer(); }
+});
+
+test('Déconnecter Claude : supprime les jetons MCP du compte, Origin exigée', async () => {
+  const b = await demarrerBanc();
+  try {
+    const o = await b.connecterMcp();
+    const { cookie } = await b.connexionSite();
+    assert.equal((await fetch(b.base + '/api/compte/deconnecter-claude', { method: 'POST', headers: { cookie } })).status, 403);
+    assert.ok(b.db.prepare('SELECT COUNT(*) AS n FROM tokens').get().n >= 2);
+    assert.equal((await b.api(cookie, '/compte/deconnecter-claude', { method: 'POST' })).status, 200);
+    assert.equal(b.db.prepare('SELECT COUNT(*) AS n FROM tokens').get().n, 0);
+    const r = await fetch(b.base + '/mcp', { method: 'POST', headers: { authorization: `Bearer ${o.jetons.access_token}`, 'content-type': 'application/json' }, body: '{}' });
+    assert.equal(r.status, 401);
+    assert.equal((await b.api(cookie, '/moi')).status, 200); // la session du site reste
+  } finally { await b.fermer(); }
+});
+
+test('MAX_USERS invalide : erreur au démarrage', () => {
+  for (const v of ['dix', '0', '-3', '2.5', '1e1']) assert.throws(() => chargerConfig({ MAX_USERS: v }, { dbPath: ':memory:' }), /MAX_USERS/, v);
+  assert.equal(chargerConfig({ MAX_USERS: '3' }, { dbPath: ':memory:' }).maxUsers, 3);
+  assert.equal(chargerConfig({}, { dbPath: ':memory:' }).maxUsers, 10);
+});
+
+test('ALLOWED_EMAILS : liste insensible à la casse, vide = ouvert, sinon refus poli', async () => {
+  const b = await demarrerBanc({ env: { ALLOWED_EMAILS: ' A@Exemple.test, autre@exemple.test ' } });
+  try {
+    assert.equal((await b.connexionSite()).statut, 302);
+    b.fg.utilisateur('sub-z', 'z@exemple.test', 'Zoé');
+    const non = await b.connexionSite();
+    assert.equal(non.statut, 403);
+    assert.match(non.corps, /Ce compte n&#39;est pas invité|Ce compte n'est pas invité/);
+    assert.equal(b.db.prepare('SELECT COUNT(*) AS n FROM users').get().n, 1);
+  } finally { await b.fermer(); }
+  const ouvert = await demarrerBanc({ env: { ALLOWED_EMAILS: '' } });
+  try {
+    ouvert.fg.utilisateur('sub-z', 'z@exemple.test', 'Zoé');
+    assert.equal((await ouvert.connexionSite()).statut, 302);
+  } finally { await ouvert.fermer(); }
+});
+
+test('limites par compte : /api/a-trier et /mcp', async () => {
+  const b = await demarrerBanc({ surcharges: { limiteTri: 2, limiteMcp: 3 } });
+  try {
+    const { cookie } = await b.connexionSite();
+    const envoi = () => { const f = new FormData(); f.append('fichier', new Blob(['bonjour'], { type: 'text/plain' }), 'a.txt'); return b.api(cookie, '/a-trier', { method: 'POST', body: f }); };
+    assert.equal((await envoi()).status, 201);
+    assert.equal((await envoi()).status, 201);
+    assert.equal((await envoi()).status, 429);
+    const o = await b.connecterMcp();
+    const appel = () => fetch(b.base + '/mcp', { method: 'POST', headers: { authorization: `Bearer ${o.jetons.access_token}`, 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, body: '{}' });
+    const codes = [];
+    for (let i = 0; i < 4; i++) codes.push((await appel()).status);
+    assert.equal(codes[3], 429);
+    assert.notEqual(codes[0], 429);
   } finally { await b.fermer(); }
 });

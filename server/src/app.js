@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import { mcpAuthRouter, getOAuthProtectedResourceMetadataUrl } from '@modelcontextprotocol/sdk/server/auth/router.js';
 import { requireBearerAuth } from '@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -47,6 +48,10 @@ export function creerApp(config, { fetchFn = fetch } = {}) {
   const origines = new Set([config.publicUrl, 'https://claude.ai', 'https://claude.com']);
   const metadonneesUrl = getOAuthProtectedResourceMetadataUrl(new URL(config.mcpUrl));
   const bearer = requireBearerAuth({ verifier: provider, resourceMetadataUrl: metadonneesUrl });
+  const limiteMcp = rateLimit({
+    windowMs: 15 * 60 * 1000, limit: config.limiteMcp ?? 300, standardHeaders: true, legacyHeaders: false,
+    keyGenerator: (req) => `u${req.auth.extra.userId}`, message: { error: 'rate_limited', error_description: 'Trop de requêtes, réessaie dans un moment.' },
+  });
   app.all('/mcp', (req, res, next) => {
     if (!config.googlePret) {
       return res.status(503).json({ error: 'service_unavailable', error_description: 'Le connecteur n\'est pas encore ouvert.' });
@@ -55,7 +60,7 @@ export function creerApp(config, { fetchFn = fetch } = {}) {
       return res.status(403).json({ error: 'forbidden', error_description: 'Origine refusée.' });
     }
     next();
-  }, bearer, (req, res, next) => {
+  }, bearer, limiteMcp, (req, res, next) => {
     if (req.method !== 'POST') {
       return res.status(405).set('Allow', 'POST').json({ jsonrpc: '2.0', error: { code: -32000, message: 'Méthode non autorisée.' }, id: null });
     }

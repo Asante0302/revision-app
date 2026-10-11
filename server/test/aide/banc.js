@@ -8,24 +8,44 @@ import { demarrerFauxGoogle } from './faux-google.js';
 
 const portLibre = () => new Promise((ok) => { const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => ok(p)); }); });
 
-export async function demarrerBanc({ maxUsers = 10, google = true, aujourdhui = '2026-10-12' } = {}) {
+export async function demarrerBanc({ maxUsers = 10, google = true, aujourdhui = '2026-10-12', env = {}, surcharges = {} } = {}) {
   const fg = await demarrerFauxGoogle();
   const port = await portLibre();
   const base = `http://127.0.0.1:${port}`;
   const config = chargerConfig({
-    PORT: String(port), PUBLIC_URL: base, MAX_USERS: String(maxUsers),
+    PORT: String(port), PUBLIC_URL: base, MAX_USERS: String(maxUsers), ...env,
     ...(google ? { GOOGLE_CLIENT_ID: 'client-test', GOOGLE_CLIENT_SECRET: 'secret-test', ENC_KEY: crypto.randomBytes(32).toString('base64') } : {}),
-  }, { dbPath: ':memory:', silencieux: true, today: () => aujourdhui, limiteAuth: 1000, google: fg.config });
+  }, { dbPath: ':memory:', silencieux: true, today: () => aujourdhui, limiteAuth: 1000, google: fg.config, ...surcharges });
   const inst = creerApp(config);
   const serveur = await new Promise((ok) => { const s = inst.app.listen(port, '127.0.0.1', () => ok(s)); });
   const manuel = (url, opts = {}) => fetch(url, { redirect: 'manual', ...opts });
 
+  // Un navigateur avec ses cookies (seulement rev_etat, envoyé au callback Google comme le ferait un vrai navigateur).
+  function navigateur() {
+    const jar = new Map();
+    return {
+      jar,
+      async manuel(url, opts = {}) {
+        const u = new URL(url);
+        const headers = { ...(opts.headers ?? {}) };
+        if (u.pathname === '/auth/google/callback' && jar.has('rev_etat')) headers.cookie = `rev_etat=${jar.get('rev_etat')}`;
+        const r = await manuel(url, { ...opts, headers });
+        for (const c of r.headers.getSetCookie()) {
+          const [nv] = c.split(';'); const i = nv.indexOf('=');
+          if (nv.slice(0, i) === 'rev_etat') { if (/Max-Age=0/i.test(c)) jar.delete('rev_etat'); else jar.set('rev_etat', nv.slice(i + 1)); }
+        }
+        return r;
+      },
+    };
+  }
+
   // Connexion Google côté site : retourne le cookie de session.
   async function connexionSite() {
-    const r1 = await manuel(base + '/auth/login');
-    const r2 = await manuel(r1.headers.get('location'));
-    const r3 = await manuel(r2.headers.get('location'));
-    return { statut: r3.status, cookie: (r3.headers.get('set-cookie') ?? '').split(';')[0], corps: r3.status === 200 || r3.status >= 400 ? await r3.text() : '' };
+    const n = navigateur();
+    const r1 = await n.manuel(base + '/auth/login');
+    const r2 = await n.manuel(r1.headers.get('location'));
+    const r3 = await n.manuel(r2.headers.get('location'));
+    return { statut: r3.status, cookie: (r3.headers.getSetCookie().find((c) => c.startsWith('rev_sess=')) ?? '').split(';')[0], corps: r3.status === 200 || r3.status >= 400 ? await r3.text() : '' };
   }
 
   // Parcours OAuth complet d'un client MCP (inscription, autorisation, jeton).
@@ -38,9 +58,10 @@ export async function demarrerBanc({ maxUsers = 10, google = true, aujourdhui = 
     const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
     const a = new URL(base + '/authorize');
     a.search = new URLSearchParams({ response_type: 'code', client_id: reg.client_id, redirect_uri: redirect, code_challenge: challenge, code_challenge_method: 'S256', state: 'etat-client', resource: base + '/mcp' }).toString();
-    const r1 = await manuel(a);
-    const r2 = await manuel(r1.headers.get('location'));
-    const r3 = await manuel(r2.headers.get('location'));
+    const n = navigateur();
+    const r1 = await n.manuel(a);
+    const r2 = await n.manuel(r1.headers.get('location'));
+    const r3 = await n.manuel(r2.headers.get('location'));
     const retour = new URL(r3.headers.get('location'));
     const code = retour.searchParams.get('code');
     const token = (params) => fetch(base + '/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: reg.client_id, ...params }) });
@@ -66,7 +87,7 @@ export async function demarrerBanc({ maxUsers = 10, google = true, aujourdhui = 
   });
 
   return {
-    base, fg, config, db: inst.db, manuel, connexionSite, connecterMcp, clientMcp, api,
+    base, fg, config, db: inst.db, manuel, navigateur, connexionSite, connecterMcp, clientMcp, api,
     async fermer() { await new Promise((ok) => { serveur.closeAllConnections(); serveur.close(ok); }); inst.close(); await fg.fermer(); },
   };
 }

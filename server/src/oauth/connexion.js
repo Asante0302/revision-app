@@ -1,11 +1,14 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
+import crypto from 'node:crypto';
 import { sha256, aleatoire } from '../lib/crypto.js';
 import { envoyerPage } from '../lib/pages.js';
 import { transaction } from '../db/index.js';
 
 const DUREE_STATE = 600;
 const DUREE_SESSION = 30 * 24 * 3600;
+const COOKIE_ETAT = 'rev_etat';
+const CHEMIN_ETAT = '/auth/google/callback';
 const maintenant = () => Math.floor(Date.now() / 1000);
 
 export function lireCookie(req, nom) {
@@ -28,7 +31,9 @@ export function creerConnexion({ config, db, google, provider }) {
   async function demarrerGoogle(res, payload, { consent = false } = {}) {
     if (!config.googlePret) return pageIndisponible(res);
     const state = aleatoire(32);
-    db.prepare('INSERT INTO google_states (hash,payload,expires_at) VALUES (?,?,?)').run(sha256(state), JSON.stringify(payload), maintenant() + DUREE_STATE);
+    const navigateur = aleatoire(32); // lié au navigateur qui démarre la connexion (cookie rev_etat)
+    db.prepare('INSERT INTO google_states (hash,payload,expires_at) VALUES (?,?,?)').run(sha256(state), JSON.stringify({ ...payload, nav: sha256(navigateur) }), maintenant() + DUREE_STATE);
+    res.append('Set-Cookie', `${COOKIE_ETAT}=${navigateur}; Max-Age=${DUREE_STATE}; Path=${CHEMIN_ETAT}; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`);
     res.set('Cache-Control', 'no-store').redirect(302, google.urlAutorisation(state, consent));
   }
 
@@ -37,6 +42,7 @@ export function creerConnexion({ config, db, google, provider }) {
     db.prepare('INSERT INTO sessions (hash,user_id,expires_at) VALUES (?,?,?)').run(sha256(jeton), userId, maintenant() + DUREE_SESSION);
     res.append('Set-Cookie', `rev_sess=${jeton}; Max-Age=${DUREE_SESSION}; Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`);
   }
+  const effacerEtat = (res) => res.append('Set-Cookie', `${COOKIE_ETAT}=; Max-Age=0; Path=${CHEMIN_ETAT}; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`);
   const effacerCookie = (res) => res.append('Set-Cookie', `rev_sess=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`);
 
   const limite = rateLimit({ windowMs: 15 * 60 * 1000, limit: config.limiteAuth ?? 60, standardHeaders: true, legacyHeaders: false, message: { erreur: 'Trop de tentatives, réessaie plus tard.' } });
@@ -57,6 +63,13 @@ export function creerConnexion({ config, db, google, provider }) {
     });
     if (!ligne || ligne.expires_at < maintenant()) return envoyerPage(res, 400, 'Lien expiré', 'Ce lien de connexion a expiré. Recommence depuis le début.');
     const p = JSON.parse(ligne.payload);
+    const cookieEtat = lireCookie(req, COOKIE_ETAT);
+    effacerEtat(res);
+    const attendu = Buffer.from(String(p.nav));
+    const recu = Buffer.from(cookieEtat ? sha256(cookieEtat) : '');
+    if (attendu.length !== recu.length || !crypto.timingSafeEqual(attendu, recu)) {
+      return envoyerPage(res, 400, 'Lien invalide', 'Cette connexion n\'a pas été commencée depuis ce navigateur. Recommence depuis le début.');
+    }
 
     if (error || typeof code !== 'string') {
       if (p.kind === 'mcp') {
@@ -70,6 +83,10 @@ export function creerConnexion({ config, db, google, provider }) {
 
     let id;
     try { id = await google.echangerCode(code); } catch { return envoyerPage(res, 502, 'Connexion impossible', 'Google n\'a pas validé la connexion. Réessaie dans un instant.'); }
+
+    if (config.emailsAutorises && !config.emailsAutorises.has(String(id.email ?? '').toLowerCase())) {
+      return envoyerPage(res, 403, 'Compte non invité', 'Ce compte n\'est pas invité.');
+    }
 
     // Vérification de place et création du compte sans interruption (même tour d'exécution).
     let user = db.prepare('SELECT id, refresh_enc FROM users WHERE sub=?').get(id.sub);

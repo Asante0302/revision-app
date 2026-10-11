@@ -64,6 +64,12 @@ export function creerEspace({ drive, templates }) {
       if (String(f.version) !== String(version)) {
         throw new ErreurMetier(`« ${nom} » a été modifié ailleurs depuis ta lecture. Relis le fichier avec lire_fichier, puis refais ta modification.`, 409);
       }
+      if (nom === 'AGENTS.md') {
+        const pers = await fichierRacine('Pers.md');
+        if (pers && !(await drive.telecharger(pers.id)).toString('utf8').includes('{')) {
+          throw new ErreurMetier('AGENTS.md est verrouillé après l\'accueil ; l\'élève peut le modifier lui-même dans son Drive.', 403);
+        }
+      }
       const maj = await drive.remplacer(f.id, 'text/markdown', contenu);
       return { version: String(maj.version) };
     },

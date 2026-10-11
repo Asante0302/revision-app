@@ -15,6 +15,13 @@ export function chargerConfig(env = process.env, surcharges = {}) {
     if (encKey.length !== 32) throw new Error('ENC_KEY doit faire 32 octets (base64).');
   }
   if (googleClientId && !encKey) throw new Error('ENC_KEY est obligatoire quand GOOGLE_CLIENT_ID est défini.');
+  let maxUsers = 10;
+  if (env.MAX_USERS !== undefined && env.MAX_USERS !== '') {
+    if (!/^\d+$/.test(env.MAX_USERS.trim()) || Number(env.MAX_USERS) < 1) throw new Error('MAX_USERS doit être un entier supérieur ou égal à 1.');
+    maxUsers = Number(env.MAX_USERS);
+  }
+  const listeVirgules = (v) => String(v || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const emailsAutorises = listeVirgules(env.ALLOWED_EMAILS).map((s) => s.toLowerCase());
   const timezone = env.TIMEZONE || 'Europe/Paris';
   const config = {
     port,
@@ -26,7 +33,9 @@ export function chargerConfig(env = process.env, surcharges = {}) {
     encKey,
     dataDir: env.DATA_DIR || path.resolve('data'),
     dbPath: null,
-    maxUsers: Number(env.MAX_USERS || 10),
+    maxUsers,
+    emailsAutorises: emailsAutorises.length ? new Set(emailsAutorises) : null,
+    redirectUrisSupplementaires: listeVirgules(env.EXTRA_REDIRECT_URIS),
     timezone,
     today: () => jourLocal(new Date(), timezone),
     webDir: path.resolve(ici, '../../web'),

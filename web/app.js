@@ -621,6 +621,7 @@
   function vueCompte() {
     dessinerNav('compte'); titrePage('Compte');
     var zone = h('div', { 'aria-live': 'polite' });
+    var retourClaude = h('div', { 'aria-live': 'polite' });
     afficher(
       h('h1', { texte: 'Compte' }),
       h('div', { class: 'carte' },
@@ -628,7 +629,9 @@
         h('div', { class: 'doux', texte: (etat.moi && etat.moi.email) || '' })),
       h('a', { class: 'carte', href: '#/connecteur' }, h('strong', { texte: 'Relier Claude' }), h('span', { class: 'doux petit', texte: 'L’adresse à copier et les étapes.' })),
       h('div', { class: 'rangee' },
-        h('button', { type: 'button', onclick: deconnexion, texte: 'Se déconnecter' })),
+        h('button', { type: 'button', onclick: deconnexion, texte: 'Se déconnecter' }),
+        h('button', { type: 'button', onclick: deconnecterClaude, texte: 'Déconnecter Claude' })),
+      retourClaude,
       h('h2', { texte: 'Supprimer mon compte' }),
       h('p', { class: 'doux', texte: 'Cela efface tout ce que le site garde sur toi : ton compte, tes leçons en copie et ta progression. Tes fichiers dans ton Google Drive ne sont pas touchés.' }),
       zone,
@@ -657,6 +660,15 @@
         if (e instanceof ErreurApi && e.status === 401) return erreurReseau(e);
         vider(zone);
         ajouter(zone, h('div', { class: 'boite erreur', role: 'alert' }, h('p', { texte: messageErreur(e) }), h('button', { type: 'button', onclick: confirmer, texte: 'Réessayer' })));
+      });
+    }
+    function deconnecterClaude() {
+      vider(retourClaude);
+      api('/api/compte/deconnecter-claude', { method: 'POST' }).then(function () {
+        ajouter(retourClaude, h('div', { class: 'boite ok', role: 'status', texte: 'Claude est déconnecté. Pour le relier de nouveau, ajoute le connecteur dans Claude.' }));
+      }).catch(function (e) {
+        if (e instanceof ErreurApi && e.status === 401) return erreurReseau(e);
+        ajouter(retourClaude, h('div', { class: 'boite erreur', role: 'alert', texte: messageErreur(e) }));
       });
     }
     function deconnexion() {

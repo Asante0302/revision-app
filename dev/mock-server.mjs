@@ -1,5 +1,5 @@
 // Faux serveur pour tester le site sans le vrai serveur. Aucune dépendance.
-// Usage : node web/dev/mock-server.mjs   (PORT=8651 par défaut ; MOCK_GOOGLE=0 pour simuler « pas prêt » ;
+// Usage : node dev/mock-server.mjs   (PORT=8651 par défaut ; MOCK_GOOGLE=0 pour simuler « pas prêt » ;
 //         MOCK_AUTH=1 pour être déjà connecté ; MOCK_VIDE=1 pour un compte sans cours)
 // Toutes les données ci-dessous sont inventées.
 import http from 'node:http';
@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const RACINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const RACINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../web');
 const PORT = Number(process.env.PORT || 8651);
 const GOOGLE = process.env.MOCK_GOOGLE !== '0';
 const VIDE = process.env.MOCK_VIDE === '1';
@@ -132,7 +132,7 @@ http.createServer(async (req, res) => {
     let rel = decodeURIComponent(url.pathname);
     if (rel.endsWith('/')) rel += 'index.html';
     const fichier = path.resolve(RACINE, '.' + rel);
-    if (!fichier.startsWith(RACINE + path.sep) || fichier.startsWith(path.join(RACINE, 'dev') + path.sep)) { res.writeHead(404); return res.end('Introuvable'); }
+    if (!fichier.startsWith(RACINE + path.sep)) { res.writeHead(404); return res.end('Introuvable'); }
     const data = await readFile(fichier);
     res.writeHead(200, { 'Content-Type': TYPES[path.extname(fichier)] || 'application/octet-stream', 'Content-Security-Policy': CSP, 'Cache-Control': 'no-cache' });
     res.end(data);

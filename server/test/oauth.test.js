@@ -37,10 +37,13 @@ test('/mcp refuse une Origin étrangère, même avec un jeton valide', async () 
   assert.equal(r.status, 403);
 });
 
-test('DCR : redirection http non locale refusée, localhost accepté', async () => {
+test('DCR : seules les redirections de Claude sont acceptées', async () => {
   const essai = (uri) => fetch(b.base + '/register', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ redirect_uris: [uri], token_endpoint_auth_method: 'none' }) });
   assert.equal((await essai('http://exemple.org/cb')).status, 400);
-  assert.equal((await essai('http://localhost:3000/cb')).status, 201);
+  assert.equal((await essai('http://localhost:3000/cb')).status, 400);
+  assert.equal((await essai('https://attaquant.example/cb')).status, 400);
+  assert.equal((await essai('https://claude.ai/api/mcp/auth_callback/../autre')).status, 400);
+  assert.equal((await essai('https://claude.ai/api/mcp/auth_callback')).status, 201);
   assert.equal((await essai('https://claude.com/api/mcp/auth_callback')).status, 201);
 });
 
@@ -92,9 +95,10 @@ test('mauvais code_verifier refusé', async () => {
   const reg = await (await fetch(b.base + '/register', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ redirect_uris: ['https://claude.ai/api/mcp/auth_callback'], token_endpoint_auth_method: 'none' }) })).json();
   const a = new URL(b.base + '/authorize');
   a.search = new URLSearchParams({ response_type: 'code', client_id: reg.client_id, redirect_uri: 'https://claude.ai/api/mcp/auth_callback', code_challenge: 'x'.repeat(43), code_challenge_method: 'S256' }).toString();
-  const r1 = await b.manuel(a);
-  const r2 = await b.manuel(r1.headers.get('location'));
-  const r3 = await b.manuel(r2.headers.get('location'));
+  const n = b.navigateur();
+  const r1 = await n.manuel(a);
+  const r2 = await n.manuel(r1.headers.get('location'));
+  const r3 = await n.manuel(r2.headers.get('location'));
   const code = new URL(r3.headers.get('location')).searchParams.get('code');
   const t = await fetch(b.base + '/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'authorization_code', client_id: reg.client_id, code, code_verifier: 'y'.repeat(50), redirect_uri: 'https://claude.ai/api/mcp/auth_callback' }) });
   assert.equal(t.status, 400);
@@ -102,13 +106,66 @@ test('mauvais code_verifier refusé', async () => {
 });
 
 test('state Google à usage unique ; refresh Google chiffré en base', async () => {
-  const r1 = await b.manuel(b.base + '/auth/login');
-  const r2 = await b.manuel(r1.headers.get('location'));
+  const n = b.navigateur();
+  const r1 = await n.manuel(b.base + '/auth/login');
+  const r2 = await n.manuel(r1.headers.get('location'));
   const cb = r2.headers.get('location');
-  assert.equal((await b.manuel(cb)).status, 302);
-  assert.equal((await b.manuel(cb)).status, 400); // rejoué
+  assert.equal((await n.manuel(cb)).status, 302);
+  assert.equal((await n.manuel(cb)).status, 400); // rejoué
   const u = b.db.prepare('SELECT refresh_enc FROM users').all();
   assert.ok(u.length >= 1);
   for (const x of u) { assert.match(x.refresh_enc, /^v1:/); assert.ok(!x.refresh_enc.includes('rt-')); }
   assert.ok(chiffrer(Buffer.alloc(32), 'x') !== chiffrer(Buffer.alloc(32), 'x'));
+});
+
+test('DCR : redirection tierce refusée à /register, EXTRA_REDIRECT_URIS l\'autorise', async () => {
+  const essai = (base, uri) => fetch(base + '/register', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ client_name: 'Claude', redirect_uris: [uri], token_endpoint_auth_method: 'none' }) });
+  const r = await essai(b.base, 'https://attaquant.example/cb');
+  assert.equal(r.status, 400);
+  assert.equal((await r.json()).error, 'invalid_client_metadata');
+  assert.equal(b.db.prepare("SELECT COUNT(*) AS n FROM oauth_clients WHERE json LIKE '%attaquant%'").get().n, 0);
+  const b2 = await demarrerBanc({ env: { EXTRA_REDIRECT_URIS: 'http://localhost:3000/cb, https://test.example/cb' } });
+  try {
+    assert.equal((await essai(b2.base, 'http://localhost:3000/cb')).status, 201);
+    assert.equal((await essai(b2.base, 'https://test.example/cb')).status, 201);
+    assert.equal((await essai(b2.base, 'https://attaquant.example/cb')).status, 400);
+  } finally { await b2.fermer(); }
+});
+
+test('éviction DCR : un client qui a des jetons vivants n\'est jamais supprimé', async () => {
+  const o = await b.connecterMcp();
+  const ins = b.db.prepare('INSERT INTO oauth_clients (client_id,json,created_at) VALUES (?,?,?)');
+  for (let i = 0; i < 1005; i++) ins.run('spam' + i, '{}', 1);
+  const { creerProvider } = await import('../src/oauth/provider.js');
+  const p = creerProvider({ config: b.config, db: b.db, demarrerGoogle: () => {} });
+  p.clientsStore.registerClient({ client_id: 'nouveau', redirect_uris: ['https://claude.ai/api/mcp/auth_callback'] });
+  assert.ok(p.clientsStore.getClient(o.reg.client_id));
+  assert.ok(p.clientsStore.getClient('nouveau'));
+  assert.equal(b.db.prepare('SELECT COUNT(*) AS n FROM oauth_clients').get().n, 1000);
+});
+
+test('state Google lié au navigateur : sans le cookie rev_etat, « Lien invalide » et aucune session', async () => {
+  const att = b.navigateur();
+  const r1 = await att.manuel(b.base + '/auth/login');
+  assert.match(r1.headers.get('set-cookie'), /rev_etat=[^;]+; Max-Age=600; Path=\/auth\/google\/callback; HttpOnly; SameSite=Lax/);
+  const urlPiege = (await att.manuel(r1.headers.get('location'))).headers.get('location');
+  const victime = b.navigateur();
+  const v = await victime.manuel(urlPiege);
+  assert.equal(v.status, 400);
+  assert.match(await v.text(), /Lien invalide/);
+  assert.ok(!(v.headers.get('set-cookie') ?? '').includes('rev_sess'));
+  // un autre cookie rev_etat ne convient pas non plus
+  const r2 = await att.manuel(b.base + '/auth/login');
+  const url2 = (await att.manuel(r2.headers.get('location'))).headers.get('location');
+  const v2 = await b.manuel(url2, { headers: { cookie: 'rev_etat=autre' } });
+  assert.equal(v2.status, 400);
+  // le parcours MCP est protégé de la même façon
+  const reg = await (await fetch(b.base + '/register', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ redirect_uris: ['https://claude.ai/api/mcp/auth_callback'], token_endpoint_auth_method: 'none' }) })).json();
+  const a = new URL(b.base + '/authorize');
+  a.search = new URLSearchParams({ response_type: 'code', client_id: reg.client_id, redirect_uri: 'https://claude.ai/api/mcp/auth_callback', code_challenge: 'x'.repeat(43), code_challenge_method: 'S256' }).toString();
+  const m1 = await b.manuel(a);
+  const m2 = await b.manuel(m1.headers.get('location'));
+  const m3 = await b.manuel(m2.headers.get('location')); // sans cookie
+  assert.equal(m3.status, 400);
+  assert.ok(!(m3.headers.get('location') ?? ''));
 });
