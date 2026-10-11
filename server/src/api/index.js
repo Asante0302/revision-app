@@ -5,6 +5,7 @@ import { sha256 } from '../lib/crypto.js';
 import { ErreurMetier, ErreurGoogle } from '../lib/erreurs.js';
 import { nettoyerNom } from '../lib/noms.js';
 import { lireCookie } from '../oauth/connexion.js';
+import { emailAutorise } from '../lib/acces.js';
 
 const MAX_UPLOAD = 10 * 1024 * 1024;
 
@@ -61,7 +62,7 @@ export function creerApi({ config, db, comptes, lecons, google, effacerCookie })
   router.use((req, res, next) => {
     const j = lireCookie(req, 'rev_sess');
     const u = j && db.prepare(`SELECT u.id, u.email, u.nom, u.refresh_enc FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.hash=? AND s.expires_at > ?`).get(sha256(j), Math.floor(Date.now() / 1000));
-    if (!u) return res.status(401).json({ erreur: 'Connecte-toi avec Google.', google_pret: config.googlePret });
+    if (!u || !emailAutorise(config, u.email)) return res.status(401).json({ erreur: 'Connecte-toi avec Google.', google_pret: config.googlePret });
     req.user = u;
     next();
   });
@@ -119,6 +120,8 @@ export function creerApi({ config, db, comptes, lecons, google, effacerCookie })
   router.post('/compte/deconnecter-claude', (req, res) => {
     db.prepare('DELETE FROM tokens WHERE user_id=?').run(req.user.id);
     db.prepare('DELETE FROM auth_codes WHERE user_id=?').run(req.user.id);
+    db.prepare('DELETE FROM consentements WHERE user_id=?').run(req.user.id);
+    db.prepare('DELETE FROM consentements_attente WHERE user_id=?').run(req.user.id);
     res.json({ ok: true });
   });
 

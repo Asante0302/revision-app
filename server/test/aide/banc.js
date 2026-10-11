@@ -20,7 +20,7 @@ export async function demarrerBanc({ maxUsers = 10, google = true, aujourdhui = 
   const serveur = await new Promise((ok) => { const s = inst.app.listen(port, '127.0.0.1', () => ok(s)); });
   const manuel = (url, opts = {}) => fetch(url, { redirect: 'manual', ...opts });
 
-  // Un navigateur avec ses cookies (seulement rev_etat, envoyé au callback Google comme le ferait un vrai navigateur).
+  // Un navigateur avec ses cookies d'état et d'accord (Path=/, envoyés à chaque requête comme le ferait un vrai navigateur).
   function navigateur() {
     const jar = new Map();
     return {
@@ -28,13 +28,19 @@ export async function demarrerBanc({ maxUsers = 10, google = true, aujourdhui = 
       async manuel(url, opts = {}) {
         const u = new URL(url);
         const headers = { ...(opts.headers ?? {}) };
-        if (u.pathname === '/auth/google/callback' && jar.has('rev_etat')) headers.cookie = `rev_etat=${jar.get('rev_etat')}`;
+        if (jar.size && !headers.cookie) headers.cookie = [...jar].map(([k, v]) => `${k}=${v}`).join('; ');
         const r = await manuel(url, { ...opts, headers });
         for (const c of r.headers.getSetCookie()) {
           const [nv] = c.split(';'); const i = nv.indexOf('=');
-          if (nv.slice(0, i) === 'rev_etat') { if (/Max-Age=0/i.test(c)) jar.delete('rev_etat'); else jar.set('rev_etat', nv.slice(i + 1)); }
+          const nom = nv.slice(0, i);
+          if (/^(__Host-)?rev_(etat|accord)$/.test(nom)) { if (/Max-Age=0/i.test(c)) jar.delete(nom); else jar.set(nom, nv.slice(i + 1)); }
         }
         return r;
+      },
+      // Jeton caché de la page de consentement, ou null si la réponse n'est pas cette page.
+      jetonConsentement: (html) => /name="jeton" value="([^"]+)"/.exec(html)?.[1] ?? null,
+      async decider(jeton, decision = 'autoriser', opts = {}) {
+        return this.manuel(base + '/auth/consentement', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', ...(opts.headers ?? {}) }, body: new URLSearchParams({ ...(jeton === null ? {} : { jeton }), decision }) });
       },
     };
   }
@@ -49,8 +55,8 @@ export async function demarrerBanc({ maxUsers = 10, google = true, aujourdhui = 
   }
 
   // Parcours OAuth complet d'un client MCP (inscription, autorisation, jeton).
-  async function connecterMcp({ redirect = 'https://claude.ai/api/mcp/auth_callback' } = {}) {
-    const reg = await (await fetch(base + '/register', {
+  async function connecterMcp({ redirect = 'https://claude.ai/api/mcp/auth_callback', reg: regExistant, decision = 'autoriser' } = {}) {
+    const reg = regExistant ?? await (await fetch(base + '/register', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ client_name: 'Claude', redirect_uris: [redirect], token_endpoint_auth_method: 'none', grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'] }),
     })).json();
@@ -61,12 +67,18 @@ export async function demarrerBanc({ maxUsers = 10, google = true, aujourdhui = 
     const n = navigateur();
     const r1 = await n.manuel(a);
     const r2 = await n.manuel(r1.headers.get('location'));
-    const r3 = await n.manuel(r2.headers.get('location'));
+    let r3 = await n.manuel(r2.headers.get('location'));
+    let pageConsentement = false;
+    if (r3.status === 200) { // première fois pour ce client : page d'accord
+      pageConsentement = true;
+      r3 = await n.decider(n.jetonConsentement(await r3.text()), decision);
+    }
     const retour = new URL(r3.headers.get('location'));
     const code = retour.searchParams.get('code');
     const token = (params) => fetch(base + '/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: reg.client_id, ...params }) });
+    if (!code) return { reg, verifier, challenge, retour, code, pageConsentement, token, reponseToken: null, jetons: null };
     const rt = await token({ grant_type: 'authorization_code', code, code_verifier: verifier, redirect_uri: redirect, resource: base + '/mcp' });
-    return { reg, verifier, challenge, retour, code, token, reponseToken: rt, jetons: rt.ok ? await rt.clone().json() : null };
+    return { reg, verifier, challenge, retour, code, pageConsentement, token, reponseToken: rt, jetons: rt.ok ? await rt.clone().json() : null };
   }
 
   async function clientMcp(accessToken) {

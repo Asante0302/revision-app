@@ -36,6 +36,20 @@ CREATE TABLE IF NOT EXISTS auth_codes (
   resource TEXT,
   expires_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS consentements (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  client_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, client_id)
+);
+CREATE TABLE IF NOT EXISTS consentements_attente (
+  hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  client_id TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  nav TEXT NOT NULL,
+  expires_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS tokens (
   hash TEXT PRIMARY KEY,
   kind TEXT NOT NULL,

@@ -47,7 +47,7 @@ export function creerGoogle({ config, db, fetchFn = fetch }) {
     try { claims = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64url').toString('utf8')); } catch { throw new ErreurGoogle('Réponse Google illisible.'); }
     // Le jeton vient directement de Google en TLS (échange de code) : on vérifie seulement l'audience.
     if (claims.aud !== config.googleClientId || !claims.sub) throw new ErreurGoogle('Réponse Google inattendue.');
-    return { sub: String(claims.sub), email: claims.email ?? '', nom: claims.name ?? '', refreshToken: r.json.refresh_token ?? null };
+    return { sub: String(claims.sub), email: claims.email ?? '', emailVerifie: claims.email_verified === true || claims.email_verified === 'true', nom: claims.name ?? '', refreshToken: r.json.refresh_token ?? null };
   }
 
   async function accessTokenPour(userId) {

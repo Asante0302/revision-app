@@ -3,6 +3,7 @@ import {
 } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { transaction } from '../db/index.js';
 import { sha256, aleatoire } from '../lib/crypto.js';
+import { emailAutorise } from '../lib/acces.js';
 
 const DUREE_ACCES = 3600; // 1 h
 const DUREE_REFRESH = 30 * 24 * 3600; // 30 jours glissants
@@ -40,7 +41,7 @@ export function creerProvider({ config, db, demarrerGoogle }) {
       }
       transaction(db, () => {
         db.prepare('INSERT INTO oauth_clients (client_id,json,created_at) VALUES (?,?,?)').run(client.client_id, JSON.stringify(client), maintenant());
-        // Éviction des plus anciens, jamais un client qui a des jetons ou un code vivants.
+        // Éviction des plus anciens, jamais un client qui a des jetons, un code ou une autorisation en cours.
         const t = maintenant();
         const trop = db.prepare('SELECT COUNT(*) AS n FROM oauth_clients').get().n - MAX_CLIENTS;
         if (trop > 0) {
@@ -49,12 +50,22 @@ export function creerProvider({ config, db, demarrerGoogle }) {
             WHERE client_id <> ?
               AND client_id NOT IN (SELECT client_id FROM tokens WHERE expires_at >= ?)
               AND client_id NOT IN (SELECT client_id FROM auth_codes WHERE expires_at >= ?)
-            ORDER BY created_at ASC, rowid ASC LIMIT ?)`).run(client.client_id, t, t, trop);
+              AND client_id NOT IN (SELECT json_extract(payload, '$.client_id') FROM google_states WHERE expires_at >= ? AND json_extract(payload, '$.client_id') IS NOT NULL)
+              AND client_id NOT IN (SELECT client_id FROM consentements_attente WHERE expires_at >= ?)
+            ORDER BY created_at ASC, rowid ASC LIMIT ?)`).run(client.client_id, t, t, t, t, trop);
+          db.prepare('DELETE FROM consentements WHERE client_id NOT IN (SELECT client_id FROM oauth_clients)').run();
         }
       });
       return client;
     },
   };
+
+  // ALLOWED_EMAILS peut changer après l'émission des jetons : on le recontrôle à chaque usage.
+  function compteAutorise(userId) {
+    if (!config.emailsAutorises) return true;
+    const u = db.prepare('SELECT email FROM users WHERE id=?').get(userId);
+    return Boolean(u) && emailAutorise(config, u.email);
+  }
 
   function emettre(userId, clientId, resource) {
     const acces = aleatoire(32);
@@ -103,6 +114,7 @@ export function creerProvider({ config, db, demarrerGoogle }) {
         const r = db.prepare('SELECT * FROM auth_codes WHERE hash=?').get(h);
         db.prepare('DELETE FROM auth_codes WHERE hash=?').run(h); // usage unique
         if (!r || r.client_id !== client.client_id || r.expires_at < maintenant()) throw new InvalidGrantError('Code invalide ou expiré.');
+        if (!compteAutorise(r.user_id)) throw new InvalidGrantError('Compte non invité.');
         if (redirectUri !== undefined && redirectUri !== r.redirect_uri) throw new InvalidGrantError('redirect_uri différent de la demande.');
         return emettre(r.user_id, client.client_id, r.resource);
       });
@@ -114,6 +126,7 @@ export function creerProvider({ config, db, demarrerGoogle }) {
         const h = sha256(refreshToken);
         const r = db.prepare("SELECT * FROM tokens WHERE hash=? AND kind='refresh'").get(h);
         if (!r || r.client_id !== client.client_id || r.expires_at < maintenant()) throw new InvalidGrantError('Jeton de rafraîchissement invalide ou expiré.');
+        if (!compteAutorise(r.user_id)) throw new InvalidGrantError('Compte non invité.');
         db.prepare('DELETE FROM tokens WHERE hash=?').run(h); // rotation
         return emettre(r.user_id, client.client_id, r.resource);
       });
@@ -121,7 +134,7 @@ export function creerProvider({ config, db, demarrerGoogle }) {
 
     async verifyAccessToken(token) {
       const r = db.prepare("SELECT * FROM tokens WHERE hash=? AND kind='access'").get(sha256(token));
-      if (!r || r.expires_at < maintenant()) throw new InvalidTokenError('Jeton invalide ou expiré.');
+      if (!r || r.expires_at < maintenant() || !compteAutorise(r.user_id)) throw new InvalidTokenError('Jeton invalide ou expiré.');
       return {
         token, clientId: r.client_id, scopes: [], expiresAt: r.expires_at,
         resource: r.resource ? new URL(r.resource) : undefined,
@@ -141,5 +154,6 @@ export function purger(db) {
   db.prepare('DELETE FROM tokens WHERE expires_at < ?').run(t);
   db.prepare('DELETE FROM auth_codes WHERE expires_at < ?').run(t);
   db.prepare('DELETE FROM google_states WHERE expires_at < ?').run(t);
+  db.prepare('DELETE FROM consentements_attente WHERE expires_at < ?').run(t);
   db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(t);
 }

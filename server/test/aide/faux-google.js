@@ -60,7 +60,7 @@ export async function demarrerFauxGoogle() {
         const out = { access_token: acces, expires_in: 3600, token_type: 'Bearer' };
         if (c.consent || !etat.vus.has(c.user.sub)) { out.refresh_token = 'rt-' + crypto.randomBytes(8).toString('hex'); etat.refresh.set(out.refresh_token, c.user.sub); }
         etat.vus.add(c.user.sub);
-        const claims = { iss: 'https://accounts.google.com', aud: etat.clientId, sub: c.user.sub, email: c.user.email, name: c.user.name };
+        const claims = { iss: 'https://accounts.google.com', aud: etat.clientId, sub: c.user.sub, email: c.user.email, name: c.user.name, email_verified: c.user.email_verifie !== false };
         out.id_token = ['e30', Buffer.from(JSON.stringify(claims)).toString('base64url'), 'sig'].join('.');
         return json(res, 200, out);
       }
@@ -123,7 +123,7 @@ export async function demarrerFauxGoogle() {
   return {
     etat, url,
     config: { authUrl: url + '/auth', tokenUrl: url + '/token', revokeUrl: url + '/revoke', driveUrl: url + '/drive/v3', uploadUrl: url + '/upload/drive/v3' },
-    utilisateur: (sub, email, name) => { etat.prochainUtilisateur = { sub, email, name }; },
+    utilisateur: (sub, email, name, email_verifie = true) => { etat.prochainUtilisateur = { sub, email, name, email_verifie }; },
     fichiersDe: (sub) => [...etat.fichiers.values()].filter((f) => f.owner === sub),
     fermer: () => new Promise((ok) => { serveur.closeAllConnections(); serveur.close(ok); }),
   };
